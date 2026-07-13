@@ -1,4 +1,4 @@
-import { getPagos, getPagosByPaciente, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
+import { getPagos, getPagosByPaciente, getPagoPorId, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
 import { createInvoice } from '../integrations/quickbooks.js';
 import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
@@ -83,7 +83,8 @@ async function buildDraft(idPaciente, pago, lineas) {
       monto: pago.monto_pago,
       metodoPagoRef: PAYMENT_METHOD_IDS[pago.medio_pago] ?? null,
       depositarEnRef: process.env.QBO_DEPOSIT_ACCOUNT_ID || null,
-      numeroReferencia: pago.numero_referencia ?? '',
+      // Referencia del deposito = boleta de Dentalink (folio), no el usuario que recibio el pago.
+      numeroReferencia: String(docNumber),
     },
   };
 }
@@ -186,6 +187,58 @@ export async function runSyncForPaciente(idPaciente) {
   }
 
   return result;
+}
+
+/**
+ * Lista los pagos de un dia (o rango) tal como estan en Dentalink, con su
+ * estado actual en nuestro sistema (ya sincronizado / en cola / pendiente),
+ * para poder elegir cual traer antes de procesarlo.
+ */
+export async function listarPagosDelDia({ fechaDesde, fechaHasta } = {}) {
+  const pagos = await getPagos({ fechaDesde, fechaHasta });
+  const drafts = await getPendingDrafts();
+  const idsEnCola = new Set(drafts.map((d) => d.id_pago));
+
+  const resultado = [];
+  for (const pago of pagos) {
+    resultado.push({
+      id: pago.id,
+      idPaciente: pago.id_paciente,
+      nombrePaciente: pago.nombre_paciente ?? null,
+      medioPago: pago.medio_pago ?? null,
+      folio: pago.folio ?? null,
+      fechaRecepcion: pago.fecha_recepcion,
+      monto: pago.monto_pago,
+      estado: (await isInvoiceSynced(pago.id))
+        ? 'sincronizado'
+        : idsEnCola.has(String(pago.id))
+          ? 'en_cola'
+          : 'pendiente',
+    });
+  }
+  return resultado;
+}
+
+/** Trae/actualiza el detalle completo de un pago puntual y lo deja listo o en la cola de revision. */
+export async function procesarPagoIndividual(idPago) {
+  const pago = await getPagoPorId(idPago);
+  if (!pago) throw new Error(`Pago ${idPago} no encontrado en Dentalink`);
+  if (await isInvoiceSynced(pago.id)) throw new Error('Este pago ya fue sincronizado antes');
+
+  await refreshCustomerIndex();
+  await refreshItemIndex();
+
+  const lineas = await getLineasCandidatas(pago.id_paciente);
+  const draft = await buildDraft(pago.id_paciente, pago, lineas);
+
+  if (isDraftReady(draft)) {
+    const created = await createInvoice(invoicePayloadFromDraft(draft));
+    await markInvoiceSynced(pago.id, created.Invoice.Id);
+    return { creada: true, invoice: created };
+  }
+
+  await upsertDraft(pago.id, pago.id_paciente, draft);
+  return { creada: false };
 }
 
 /**

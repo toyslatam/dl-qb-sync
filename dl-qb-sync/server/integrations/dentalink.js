@@ -78,6 +78,12 @@ export function getPagos({ fechaDesde, fechaHasta } = {}) {
   return dentalinkGetAllPages('/pagos', rangoFecha('fecha_recepcion', fechaDesde, fechaHasta));
 }
 
+/** Un pago puntual por su id (para traer el detalle actual desde la lista del dia). */
+export async function getPagoPorId(idPago) {
+  const pagos = await dentalinkGetAllPages('/pagos', { id: { eq: Number(idPago) } });
+  return pagos[0] ?? null;
+}
+
 /** Pagos de un paciente especifico (modo de prueba con un solo paciente). */
 export function getPagosByPaciente(idPaciente) {
   return dentalinkGetAllPages(`/pacientes/${idPaciente}/pagos`);

@@ -3,6 +3,7 @@ import { supabase } from './lib/supabaseClient.js';
 import { apiFetch } from './lib/api.js';
 import Login from './components/Login.jsx';
 import SyncPanel from './components/SyncPanel.jsx';
+import PagosDelDia from './components/PagosDelDia.jsx';
 import ReviewQueue from './components/ReviewQueue.jsx';
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
           </span>
         )}
       </p>
+      <PagosDelDia onTraido={() => setReviewQueueVersion((v) => v + 1)} />
       <SyncPanel onSynced={() => setReviewQueueVersion((v) => v + 1)} />
       <ReviewQueue refreshTrigger={reviewQueueVersion} />
     </div>

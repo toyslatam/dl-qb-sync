@@ -4,7 +4,13 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
-import { runSyncCycle, runSyncForPaciente, createInvoiceFromQueue } from './sync/invoiceSync.js';
+import {
+  runSyncCycle,
+  runSyncForPaciente,
+  createInvoiceFromQueue,
+  listarPagosDelDia,
+  procesarPagoIndividual,
+} from './sync/invoiceSync.js';
 import { getPendingDrafts, getDraft, upsertDraft, upsertItemIndex, upsertCustomerIndex } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
@@ -101,6 +107,31 @@ app.post('/api/sync/paciente/:idPaciente', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Lista los pagos de un dia/rango tal como estan en Dentalink (sin procesarlos),
+// para elegir cual traer con detalle completo.
+app.get('/api/pagos', async (req, res) => {
+  try {
+    const { desde, hasta } = req.query ?? {};
+    const pagos = await listarPagosDelDia({ fechaDesde: desde, fechaHasta: hasta });
+    res.json(pagos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trae el detalle completo de un pago puntual (match de cliente/prestaciones) y lo
+// deja creado o en la cola de revision.
+app.post('/api/pagos/:idPago/traer-detalle', async (req, res) => {
+  try {
+    const result = await procesarPagoIndividual(req.params.idPago);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
   }
 });
 
