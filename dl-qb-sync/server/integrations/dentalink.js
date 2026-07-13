@@ -1,40 +1,51 @@
 import 'dotenv/config';
 import fetch from 'node-fetch';
 
-const BASE_URL = process.env.DENTALINK_BASE_URL;
-const TOKEN = process.env.DENTALINK_TOKEN;
+const BASE_URL = (process.env.DENTALINK_BASE_URL || '').trim();
+// Acepta el valor tanto si en .env viene solo el token como si ya incluye el
+// prefijo "Token " (evita duplicarlo al armar el header, que causaba 401).
+const RAW_TOKEN = (process.env.DENTALINK_TOKEN || '').trim();
+const TOKEN = RAW_TOKEN.replace(/^Token\s+/i, '');
 
-async function dentalinkGet(path, params = {}) {
-  const url = new URL(`${BASE_URL}${path}`);
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null) url.searchParams.set(key, value);
-  }
-
+async function dentalinkFetch(url) {
   const res = await fetch(url, {
     headers: { Authorization: `Token ${TOKEN}` },
   });
   if (!res.ok) {
-    throw new Error(`Dentalink GET ${path} failed: ${res.status} ${await res.text()}`);
+    throw new Error(`Dentalink GET ${url.pathname} failed: ${res.status} ${await res.text()}`);
   }
-  const body = await res.json();
+  return res.json();
+}
+
+/** Dentalink filtra con ?q={"campo":{"operador":"valor"}}, no con query params sueltos. */
+function buildUrl(path, query) {
+  const url = new URL(`${BASE_URL}${path}`);
+  if (query && Object.keys(query).length > 0) {
+    url.searchParams.set('q', JSON.stringify(query));
+  }
+  return url;
+}
+
+async function dentalinkGetOne(path, query) {
+  const body = await dentalinkFetch(buildUrl(path, query));
   return body.data ?? body;
 }
 
-async function dentalinkGetAllPages(path, params = {}) {
-  let page = 1;
+/** Dentalink pagina por cursor: sigue links.next hasta que ya no venga. */
+async function dentalinkGetAllPages(path, query) {
   const items = [];
-  // Dentalink pagina con ?page=N; se detiene cuando una pagina vuelve vacia.
-  while (true) {
-    const data = await dentalinkGet(path, { ...params, page });
-    if (!Array.isArray(data) || data.length === 0) break;
-    items.push(...data);
-    page += 1;
+  let body = await dentalinkFetch(buildUrl(path, query));
+  if (Array.isArray(body.data)) items.push(...body.data);
+
+  while (body.links?.next) {
+    body = await dentalinkFetch(new URL(body.links.next));
+    if (Array.isArray(body.data)) items.push(...body.data);
   }
   return items;
 }
 
 export function getPaciente(idPaciente) {
-  return dentalinkGet(`/pacientes/${idPaciente}`);
+  return dentalinkGetOne(`/pacientes/${idPaciente}`);
 }
 
 export function getPrestaciones() {
@@ -42,7 +53,14 @@ export function getPrestaciones() {
 }
 
 export function getPrestacion(idPrestacion) {
-  return dentalinkGet(`/prestaciones/${idPrestacion}`);
+  return dentalinkGetOne(`/prestaciones/${idPrestacion}`);
+}
+
+function rangoFecha(campo, fechaDesde, fechaHasta) {
+  const filtro = {};
+  if (fechaDesde) filtro.gte = fechaDesde;
+  if (fechaHasta) filtro.lte = fechaHasta;
+  return Object.keys(filtro).length ? { [campo]: filtro } : undefined;
 }
 
 /**
@@ -52,18 +70,12 @@ export function getPrestacion(idPrestacion) {
  * getTratamientosByPaciente()/getDetalleTratamiento() para las prestaciones.
  */
 export function getDocumentosTributarios({ fechaDesde, fechaHasta } = {}) {
-  const filtros = {};
-  if (fechaDesde) filtros['fecha_emision[gte]'] = fechaDesde;
-  if (fechaHasta) filtros['fecha_emision[lte]'] = fechaHasta;
-  return dentalinkGetAllPages('/documentosTributarios', filtros);
+  return dentalinkGetAllPages('/documentosTributarios', rangoFecha('fecha_emision', fechaDesde, fechaHasta));
 }
 
 /** Pagos recibidos en un rango de fechas (todos los pacientes). */
 export function getPagos({ fechaDesde, fechaHasta } = {}) {
-  const filtros = {};
-  if (fechaDesde) filtros['fecha_recepcion[gte]'] = fechaDesde;
-  if (fechaHasta) filtros['fecha_recepcion[lte]'] = fechaHasta;
-  return dentalinkGetAllPages('/pagos', filtros);
+  return dentalinkGetAllPages('/pagos', rangoFecha('fecha_recepcion', fechaDesde, fechaHasta));
 }
 
 /** Pagos de un paciente especifico (modo de prueba con un solo paciente). */

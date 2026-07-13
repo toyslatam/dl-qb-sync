@@ -48,7 +48,7 @@ async function buildDraft(idPaciente, pago, lineas) {
       id: pago.id,
       monto: pago.monto_pago,
       fecha: pago.fecha_recepcion,
-      folioBoleta: pago.folio_boleta ?? null,
+      folioBoleta: pago.folio ?? null,
     },
     customerMatch: qbCustomerId ? { qbCustomerId } : null,
     lineas,
