@@ -71,6 +71,7 @@ app.get('/api/qbo/callback', async (req, res) => {
         `QBO_REALM_ID=<code>${req.query.realmId}</code>`
     );
   } catch (err) {
+    console.error(err);
     res.status(500).send(`Error en OAuth callback: ${err.message}`);
   }
 });
@@ -82,6 +83,7 @@ app.post('/api/sync', async (req, res) => {
     const result = await runSyncCycle({ fechaDesde: desde, fechaHasta: hasta });
     res.json(result);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -92,6 +94,7 @@ app.post('/api/sync/paciente/:idPaciente', async (req, res) => {
     const result = await runSyncForPaciente(req.params.idPaciente);
     res.json(result);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -101,6 +104,7 @@ app.get('/api/review-queue', async (_req, res) => {
   try {
     res.json(await getPendingDrafts());
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -111,6 +115,7 @@ app.get('/api/review-queue/:idPago', async (req, res) => {
     if (!draft) return res.status(404).json({ error: 'No encontrado' });
     res.json(draft);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -134,6 +139,7 @@ app.patch('/api/review-queue/:idPago/lineas/:idDetalle', async (req, res) => {
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -158,6 +164,7 @@ app.post('/api/review-queue/:idPago/lineas/:idDetalle/asignar-item', async (req,
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -176,6 +183,7 @@ app.post('/api/review-queue/:idPago/asignar-cliente', async (req, res) => {
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -197,6 +205,7 @@ app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -207,6 +216,7 @@ app.post('/api/review-queue/:idPago/crear-factura', async (req, res) => {
     const created = await createInvoiceFromQueue(req.params.idPago);
     res.json(created);
   } catch (err) {
+    console.error(err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -216,6 +226,7 @@ app.get('/api/qbo/items/buscar', async (req, res) => {
   try {
     res.json(await searchItems(req.query.q ?? ''));
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -224,6 +235,7 @@ app.get('/api/qbo/customers/buscar', async (req, res) => {
   try {
     res.json(await searchCustomers(req.query.q ?? ''));
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

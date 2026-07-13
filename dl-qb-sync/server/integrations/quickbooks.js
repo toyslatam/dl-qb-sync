@@ -5,17 +5,22 @@ import { getSetting, setSetting } from '../db/store.js';
 
 const REFRESH_TOKEN_KEY = 'qbo_refresh_token';
 
+// .trim() defensivo: variables de entorno pegadas desde un panel web a veces
+// arrastran un espacio o salto de linea invisible que rompe la autenticacion
+// sin que se note en la UI.
+const CLIENT_ID = (process.env.QBO_CLIENT_ID || '').trim();
+const CLIENT_SECRET = (process.env.QBO_CLIENT_SECRET || '').trim();
+const ENVIRONMENT = (process.env.QBO_ENVIRONMENT || 'sandbox').trim();
+const REDIRECT_URI = (process.env.QBO_REDIRECT_URI || '').trim();
+
 const oauthClient = new OAuthClient({
-  clientId: process.env.QBO_CLIENT_ID,
-  clientSecret: process.env.QBO_CLIENT_SECRET,
-  environment: process.env.QBO_ENVIRONMENT || 'sandbox',
-  redirectUri: process.env.QBO_REDIRECT_URI,
+  clientId: CLIENT_ID,
+  clientSecret: CLIENT_SECRET,
+  environment: ENVIRONMENT,
+  redirectUri: REDIRECT_URI,
 });
 
-const API_BASE =
-  (process.env.QBO_ENVIRONMENT || 'sandbox') === 'production'
-    ? 'https://quickbooks.api.intuit.com'
-    : 'https://sandbox-quickbooks.api.intuit.com';
+const API_BASE = ENVIRONMENT === 'production' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com';
 
 let cachedToken = null; // { access_token, refresh_token, expires_at }
 
@@ -73,7 +78,7 @@ export async function handleOAuthCallback(redirectedUrl) {
  * aunque el token guardado en Supabase fuera valido.
  */
 async function refreshWithIntuit(refreshToken) {
-  const basic = Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64');
+  const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
   const res = await withRetry(() =>
     fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
@@ -96,13 +101,14 @@ async function ensureAccessToken() {
     return cachedToken.access_token;
   }
 
-  const refreshToken =
+  const rawRefreshToken =
     cachedToken?.refresh_token || (await getSetting(REFRESH_TOKEN_KEY)) || process.env.QBO_REFRESH_TOKEN;
-  if (!refreshToken) {
+  if (!rawRefreshToken) {
     throw new Error(
       'No hay refresh token de QuickBooks disponible. Completa el login OAuth en /api/qbo/connect primero.'
     );
   }
+  const refreshToken = rawRefreshToken.trim();
 
   const token = await refreshWithIntuit(refreshToken);
   cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
@@ -112,7 +118,7 @@ async function ensureAccessToken() {
 
 async function qboFetch(path, { method = 'GET', body } = {}) {
   const accessToken = await ensureAccessToken();
-  const realmId = process.env.QBO_REALM_ID;
+  const realmId = (process.env.QBO_REALM_ID || '').trim();
   const res = await withRetry(() =>
     fetch(`${API_BASE}/v3/company/${realmId}${path}`, {
       method,
