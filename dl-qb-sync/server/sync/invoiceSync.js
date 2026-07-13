@@ -110,6 +110,9 @@ export function invoicePayloadFromDraft(draft) {
         ItemRef: { value: l.qbItemId },
         Qty: l.cantidad ?? 1,
         UnitPrice: l.precio,
+        // QBO exige la tasa de impuesto por linea (no basta a nivel factura)
+        // cuando la cuenta tiene "Automated Sales Tax" activo.
+        ...(f.taxCodeRef ? { TaxCodeRef: { value: String(f.taxCodeRef) } } : {}),
       },
     })),
   };
