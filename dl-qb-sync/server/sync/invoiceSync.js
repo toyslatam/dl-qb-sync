@@ -88,6 +88,10 @@ async function buildDraft(idPaciente, pago, lineas) {
   };
 }
 
+export function calcularTotal(draft) {
+  return draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+}
+
 export function isDraftReady(draft) {
   return Boolean(draft.customerMatch?.qbCustomerId) && draft.lineas.length > 0 && draft.lineas.every((l) => l.estado === 'matched');
 }
@@ -197,7 +201,10 @@ export async function createInvoiceFromQueue(idPago, { registrarPago = false } =
   const payload = invoicePayloadFromDraft(row.draft);
   if (registrarPago) {
     const d = row.draft.deposito ?? {};
-    payload.Deposit = Number(d.monto ?? row.draft.pago.monto ?? 0);
+    // El deposito siempre es por el total real de la factura (suma de lineas),
+    // no el monto original del pago en Dentalink, que puede no coincidir si
+    // se editaron/agregaron/quitaron lineas en la cola de revision.
+    payload.Deposit = calcularTotal(row.draft);
     if (d.depositarEnRef) payload.DepositToAccountRef = { value: String(d.depositarEnRef) };
     if (d.metodoPagoRef) payload.PaymentMethodRef = { value: String(d.metodoPagoRef) };
   }

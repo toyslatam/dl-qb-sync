@@ -28,6 +28,7 @@ export default function DraftRow({ row, onChange }) {
 
   const idPago = row.id_pago;
   const lista = draft.lineas.length > 0 && draft.lineas.every((l) => l.estado === 'matched') && draft.customerMatch;
+  const totalFactura = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
 
   async function run(action) {
     setBusy(true);
@@ -157,13 +158,17 @@ export default function DraftRow({ row, onChange }) {
         </span>
       </div>
 
-      <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
-        <b>Cliente en QuickBooks:</b>
+      <div style={{ marginBottom: 'var(--space-3)' }}>
+        <span className="section-label" style={{ marginBottom: 'var(--space-1)' }}>
+          Cliente en QuickBooks
+        </span>
         {draft.customerMatch ? (
-          <span>{draft.customerMatch.qbDisplayName || `(id ${draft.customerMatch.qbCustomerId})`}</span>
+          <span style={{ fontWeight: 600 }}>{draft.customerMatch.qbDisplayName || `(id ${draft.customerMatch.qbCustomerId})`}</span>
         ) : (
-          <>
-            <span className="text-danger">sin asignar</span>
+          <div className="row">
+            <span className="badge" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+              sin asignar
+            </span>
             <SearchPicker endpoint="/api/qbo/customers/buscar" labelKey="DisplayName" onPick={asignarCliente} placeholder="Buscar cliente…" />
             <span className="text-muted">o</span>
             <input
@@ -175,10 +180,11 @@ export default function DraftRow({ row, onChange }) {
             <button onClick={crearCliente} disabled={busy}>
               Crear en QuickBooks
             </button>
-          </>
+          </div>
         )}
       </div>
 
+      <span className="section-label">Prestaciones</span>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -320,10 +326,12 @@ export default function DraftRow({ row, onChange }) {
         </label>
 
         {registrarPago && (
-          <div className="preview-box field-grid">
+          <div className="preview-box">
+            <span className="section-label">Depósito a registrar</span>
+            <div className="field-grid">
             <label className="field-label">
               Monto del depósito
-              <input type="number" value={draft.deposito?.monto ?? ''} onChange={(e) => actualizarDeposito('monto', e.target.value)} />
+              <input value={totalFactura.toFixed(2)} disabled title="Siempre es el total de la factura" />
             </label>
             <label className="field-label">
               Método de pago
@@ -350,6 +358,7 @@ export default function DraftRow({ row, onChange }) {
                 placeholder="(sin cuenta)"
               />
             </label>
+            </div>
           </div>
         )}
       </div>
@@ -399,8 +408,8 @@ function FacturaPreview({ draft }) {
 
   return (
     <div className="preview-box">
-      <b>Vista previa de la factura</b>
-      <table className="data-table" style={{ minWidth: 'auto', marginTop: 'var(--space-2)' }}>
+      <span className="section-label">Vista previa de la factura</span>
+      <table className="data-table" style={{ minWidth: 'auto' }}>
         <tbody>
           <tr>
             <td className="text-muted">Cliente</td>
