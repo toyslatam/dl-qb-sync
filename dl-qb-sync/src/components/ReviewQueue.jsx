@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api.js';
 import DraftRow from './DraftRow.jsx';
 
-export default function ReviewQueue() {
+export default function ReviewQueue({ refreshTrigger }) {
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,7 +16,7 @@ export default function ReviewQueue() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshTrigger]);
 
   return (
     <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem' }}>

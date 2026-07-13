@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../lib/api.js';
 
-export default function SyncPanel() {
+export default function SyncPanel({ onSynced }) {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [idPaciente, setIdPaciente] = useState('');
@@ -20,6 +20,7 @@ export default function SyncPanel() {
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Error desconocido');
       setResult(await res.json());
+      onSynced?.();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,6 +37,7 @@ export default function SyncPanel() {
       const res = await apiFetch(`/api/sync/paciente/${idPaciente}`, { method: 'POST' });
       if (!res.ok) throw new Error((await res.json()).error || 'Error desconocido');
       setResult(await res.json());
+      onSynced?.();
     } catch (err) {
       setError(err.message);
     } finally {

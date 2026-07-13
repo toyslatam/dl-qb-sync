@@ -99,7 +99,9 @@ export default function DraftRow({ row, onChange }) {
       <div style={{ margin: '0.5rem 0' }}>
         <b>Cliente en QuickBooks: </b>
         {draft.customerMatch ? (
-          <code>{draft.customerMatch.qbCustomerId}</code>
+          <span>
+            {draft.customerMatch.qbDisplayName || `(id ${draft.customerMatch.qbCustomerId})`}
+          </span>
         ) : (
           <>
             <span style={{ color: 'crimson' }}>sin asignar</span>{' '}
@@ -170,9 +172,66 @@ export default function DraftRow({ row, onChange }) {
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
 
+      <FacturaPreview draft={draft} />
+
       <button onClick={crearFactura} disabled={!lista || busy} style={{ marginTop: '0.5rem' }}>
         {busy ? 'Creando…' : 'Crear factura en QuickBooks'}
       </button>
+    </div>
+  );
+}
+
+/** Muestra como quedaria la factura en QuickBooks antes de crearla. */
+function FacturaPreview({ draft }) {
+  const total = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+
+  return (
+    <div style={{ background: '#f7f7f7', border: '1px dashed #bbb', borderRadius: 6, padding: '0.75rem', margin: '0.75rem 0' }}>
+      <b>Vista previa de la factura</b>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '0.4rem' }}>
+        <tbody>
+          <tr>
+            <td style={{ color: '#666' }}>Cliente</td>
+            <td>{draft.customerMatch?.qbDisplayName || draft.customerMatch?.qbCustomerId || '(sin asignar)'}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#666' }}>N° documento</td>
+            <td>{draft.pago.folioBoleta ?? draft.pago.id}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#666' }}>Fecha</td>
+            <td>{draft.pago.fecha}</td>
+          </tr>
+        </tbody>
+      </table>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+        <thead>
+          <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+            <th>Item</th>
+            <th>Cant.</th>
+            <th>Precio unit.</th>
+            <th>Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {draft.lineas.map((l) => (
+            <tr key={l.idDetalle} style={{ borderBottom: '1px solid #eee' }}>
+              <td>{l.qbItemName || l.nombre}</td>
+              <td>{l.cantidad ?? 1}</td>
+              <td>{l.precio ?? '—'}</td>
+              <td>{l.precio !== null ? (l.precio * (l.cantidad ?? 1)).toFixed(2) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={3} style={{ textAlign: 'right', fontWeight: 'bold' }}>
+              Total
+            </td>
+            <td style={{ fontWeight: 'bold' }}>{total.toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }

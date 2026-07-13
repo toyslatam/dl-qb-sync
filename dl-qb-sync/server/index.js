@@ -178,7 +178,7 @@ app.post('/api/review-queue/:idPago/asignar-cliente', async (req, res) => {
     if (!qbCustomerId) return res.status(400).json({ error: 'qbCustomerId requerido' });
 
     const draft = row.draft;
-    draft.customerMatch = { qbCustomerId };
+    draft.customerMatch = { qbCustomerId, qbDisplayName: qbDisplayName ?? null };
     await upsertCustomerIndex(draft.idPaciente, qbCustomerId, qbDisplayName ?? '');
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
@@ -200,7 +200,7 @@ app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
     const displayName = buildSuffixedName(nombre, draft.idPaciente);
     const created = await createCustomer({ DisplayName: displayName });
 
-    draft.customerMatch = { qbCustomerId: created.Customer.Id };
+    draft.customerMatch = { qbCustomerId: created.Customer.Id, qbDisplayName: displayName };
     await upsertCustomerIndex(draft.idPaciente, created.Customer.Id, displayName);
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);

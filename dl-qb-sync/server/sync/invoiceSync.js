@@ -41,7 +41,7 @@ async function getLineasCandidatas(idPaciente) {
 }
 
 async function buildDraft(idPaciente, pago, lineas) {
-  const qbCustomerId = await matchCustomer(idPaciente);
+  const customerMatch = await matchCustomer(idPaciente);
   return {
     idPaciente: String(idPaciente),
     pago: {
@@ -50,7 +50,7 @@ async function buildDraft(idPaciente, pago, lineas) {
       fecha: pago.fecha_recepcion,
       folioBoleta: pago.folio ?? null,
     },
-    customerMatch: qbCustomerId ? { qbCustomerId } : null,
+    customerMatch,
     lineas,
   };
 }

@@ -21,14 +21,14 @@ export async function upsertCustomerIndex(idDentalink, qbCustomerId, qbDisplayNa
   assertOk(error, 'upsertCustomerIndex');
 }
 
-export async function findQbCustomerId(idDentalink) {
+export async function findQbCustomer(idDentalink) {
   const { data, error } = await supabase
     .from('customer_index')
-    .select('qb_customer_id')
+    .select('qb_customer_id, qb_display_name')
     .eq('id_dentalink', String(idDentalink))
     .maybeSingle();
-  assertOk(error, 'findQbCustomerId');
-  return data?.qb_customer_id ?? null;
+  assertOk(error, 'findQbCustomer');
+  return data ? { qbCustomerId: data.qb_customer_id, qbDisplayName: data.qb_display_name } : null;
 }
 
 export async function upsertItemIndex(prestacionKey, qbItemId, qbItemName) {

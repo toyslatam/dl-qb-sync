@@ -8,6 +8,7 @@ import ReviewQueue from './components/ReviewQueue.jsx';
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = cargando, null = sin sesion
   const [health, setHealth] = useState(null);
+  const [reviewQueueVersion, setReviewQueueVersion] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -38,8 +39,8 @@ export default function App() {
         </div>
       </div>
       <p>API: {health === null ? 'verificando…' : health.ok ? '✅ conectada' : '❌ sin conexion'}</p>
-      <SyncPanel />
-      <ReviewQueue />
+      <SyncPanel onSynced={() => setReviewQueueVersion((v) => v + 1)} />
+      <ReviewQueue refreshTrigger={reviewQueueVersion} />
     </div>
   );
 }

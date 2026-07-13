@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { getAllCustomers } from '../integrations/quickbooks.js';
-import { clearCustomerIndex, upsertCustomerIndex, findQbCustomerId } from '../db/store.js';
+import { clearCustomerIndex, upsertCustomerIndex, findQbCustomer } from '../db/store.js';
 
 const SUFFIX_PREFIX = process.env.DL_CUSTOMER_SUFFIX_PREFIX || 'DL';
 // Matchea nombres tipo "Juan Perez - DL12345" (case-insensitive, espacios flexibles).
@@ -30,6 +30,7 @@ export async function refreshCustomerIndex() {
   return { total: customers.length, indexed };
 }
 
+/** Devuelve { qbCustomerId, qbDisplayName } o null si el paciente no matchea con ningun Customer. */
 export function matchCustomer(idPaciente) {
-  return findQbCustomerId(String(idPaciente));
+  return findQbCustomer(String(idPaciente));
 }
