@@ -8,6 +8,7 @@
     "dev:full": "npm run dev:full --prefix ./dl-qb-sync",
     "install:app": "npm install --prefix ./dl-qb-sync",
     "sync": "npm run sync --prefix ./dl-qb-sync",
-    "build": "npm run build --prefix ./dl-qb-sync"
+    "build": "npm install --prefix ./dl-qb-sync && npm run build --prefix ./dl-qb-sync",
+    "start": "npm run start --prefix ./dl-qb-sync"
   }
 }
