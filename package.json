@@ -1,0 +1,13 @@
+{
+  "name": "app-dl-oficial-workspace",
+  "private": true,
+  "description": "Atajo: el proyecto real esta en la subcarpeta dl-qb-sync",
+  "scripts": {
+    "dev": "npm run dev --prefix ./dl-qb-sync",
+    "dev:api": "npm run dev:api --prefix ./dl-qb-sync",
+    "dev:full": "npm run dev:full --prefix ./dl-qb-sync",
+    "install:app": "npm install --prefix ./dl-qb-sync",
+    "sync": "npm run sync --prefix ./dl-qb-sync",
+    "build": "npm run build --prefix ./dl-qb-sync"
+  }
+}
