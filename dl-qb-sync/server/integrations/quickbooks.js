@@ -65,6 +65,32 @@ export async function handleOAuthCallback(redirectedUrl) {
   return token;
 }
 
+/**
+ * Llama directo al endpoint de tokens de Intuit en vez de usar
+ * oauthClient.setToken()/.refresh(): esos metodos comparten estado interno
+ * con el cliente OAuth (usado tambien para el login inicial) y terminaban
+ * enviando un refresh_token distinto/vacio, causando "invalid" en produccion
+ * aunque el token guardado en Supabase fuera valido.
+ */
+async function refreshWithIntuit(refreshToken) {
+  const basic = Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64');
+  const res = await withRetry(() =>
+    fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basic}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
+    })
+  );
+  if (!res.ok) {
+    throw new Error(`QBO refresh failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
+
 async function ensureAccessToken() {
   if (cachedToken && cachedToken.expires_at > Date.now() + 30_000) {
     return cachedToken.access_token;
@@ -78,9 +104,7 @@ async function ensureAccessToken() {
     );
   }
 
-  oauthClient.setToken({ refresh_token: refreshToken });
-  const authResponse = await withRetry(() => oauthClient.refresh());
-  const token = authResponse.getJson();
+  const token = await refreshWithIntuit(refreshToken);
   cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
   await setSetting(REFRESH_TOKEN_KEY, token.refresh_token);
   return cachedToken.access_token;
