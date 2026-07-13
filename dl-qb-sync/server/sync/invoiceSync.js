@@ -52,6 +52,9 @@ async function getLineasCandidatas(idPaciente) {
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await matchCustomer(idPaciente);
   const docNumber = pago.folio ?? pago.id;
+  // La factura se registra el dia que se crea en QuickBooks, no el dia
+  // historico del pago en Dentalink (que puede ser mucho mas antiguo).
+  const hoy = new Date().toISOString().slice(0, 10);
 
   return {
     idPaciente: String(idPaciente),
@@ -69,8 +72,8 @@ async function buildDraft(idPaciente, pago, lineas) {
     factura: {
       docNumber,
       trackingNum: docNumber,
-      txnDate: pago.fecha_recepcion,
-      dueDate: pago.fecha_recepcion,
+      txnDate: hoy,
+      dueDate: hoy,
       termRef: process.env.QBO_SALES_TERM_ID || null,
       customerMemo: pago.numero_referencia ?? '',
       taxCodeRef: process.env.QBO_TAX_CODE_ID || null,

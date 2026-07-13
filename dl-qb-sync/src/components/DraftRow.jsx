@@ -279,16 +279,12 @@ export default function DraftRow({ row, onChange }) {
       {info && <p className="text-success">{info}</p>}
 
       <details className="preview-box">
-        <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Detalles de factura</summary>
+        <summary>Detalles de factura</summary>
         <div className="stack" style={{ marginTop: 'var(--space-3)' }}>
-          <div className="row">
+          <div className="field-grid">
             <label className="field-label">
               N.° de factura
-              <input
-                value={draft.factura?.docNumber ?? ''}
-                onChange={(e) => actualizarFactura('docNumber', e.target.value)}
-                style={{ width: 140 }}
-              />
+              <input value={draft.factura?.docNumber ?? ''} onChange={(e) => actualizarFactura('docNumber', e.target.value)} />
             </label>
             <label className="field-label">
               Términos
@@ -299,32 +295,18 @@ export default function DraftRow({ row, onChange }) {
                 placeholder="(sin término)"
               />
             </label>
-          </div>
-          <div className="row">
             <label className="field-label">
               Fecha de factura
-              <input
-                type="date"
-                value={draft.factura?.txnDate ?? ''}
-                onChange={(e) => actualizarFactura('txnDate', e.target.value)}
-              />
+              <input type="date" value={draft.factura?.txnDate ?? ''} onChange={(e) => actualizarFactura('txnDate', e.target.value)} />
             </label>
             <label className="field-label">
               Fecha de vencimiento
-              <input
-                type="date"
-                value={draft.factura?.dueDate ?? ''}
-                onChange={(e) => actualizarFactura('dueDate', e.target.value)}
-              />
+              <input type="date" value={draft.factura?.dueDate ?? ''} onChange={(e) => actualizarFactura('dueDate', e.target.value)} />
             </label>
           </div>
           <label className="field-label">
             Nota para el cliente
-            <input
-              value={draft.factura?.customerMemo ?? ''}
-              onChange={(e) => actualizarFactura('customerMemo', e.target.value)}
-              style={{ width: '100%' }}
-            />
+            <input value={draft.factura?.customerMemo ?? ''} onChange={(e) => actualizarFactura('customerMemo', e.target.value)} />
           </label>
         </div>
       </details>
@@ -338,15 +320,10 @@ export default function DraftRow({ row, onChange }) {
         </label>
 
         {registrarPago && (
-          <div className="preview-box row">
+          <div className="preview-box field-grid">
             <label className="field-label">
               Monto del depósito
-              <input
-                type="number"
-                value={draft.deposito?.monto ?? ''}
-                onChange={(e) => actualizarDeposito('monto', e.target.value)}
-                style={{ width: 110 }}
-              />
+              <input type="number" value={draft.deposito?.monto ?? ''} onChange={(e) => actualizarDeposito('monto', e.target.value)} />
             </label>
             <label className="field-label">
               Método de pago
@@ -362,7 +339,6 @@ export default function DraftRow({ row, onChange }) {
               <input
                 value={draft.deposito?.numeroReferencia ?? ''}
                 onChange={(e) => actualizarDeposito('numeroReferencia', e.target.value)}
-                style={{ width: 140 }}
               />
             </label>
             <label className="field-label">

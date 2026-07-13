@@ -6,7 +6,6 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import { runSyncCycle, runSyncForPaciente, createInvoiceFromQueue } from './sync/invoiceSync.js';
 import { getPendingDrafts, getDraft, upsertDraft, upsertItemIndex, upsertCustomerIndex } from './db/store.js';
-import { buildSuffixedName } from './matching/customerMatch.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
   getAuthorizeUri,
@@ -278,7 +277,7 @@ app.post('/api/review-queue/:idPago/asignar-cliente', async (req, res) => {
   }
 });
 
-// Crear un Customer nuevo en QuickBooks para este paciente (sufijo DL{id} incluido) y asignarlo.
+// Crear un Customer nuevo en QuickBooks para este paciente (campo Suffix = id_paciente) y asignarlo.
 app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
   try {
     const row = await getDraft(req.params.idPago);
@@ -287,11 +286,10 @@ app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
     if (!nombre) return res.status(400).json({ error: 'nombre requerido' });
 
     const draft = row.draft;
-    const displayName = buildSuffixedName(nombre, draft.idPaciente);
-    const created = await createCustomer({ DisplayName: displayName });
+    const created = await createCustomer({ DisplayName: nombre, Suffix: String(draft.idPaciente) });
 
-    draft.customerMatch = { qbCustomerId: created.Customer.Id, qbDisplayName: displayName };
-    await upsertCustomerIndex(draft.idPaciente, created.Customer.Id, displayName);
+    draft.customerMatch = { qbCustomerId: created.Customer.Id, qbDisplayName: nombre };
+    await upsertCustomerIndex(draft.idPaciente, created.Customer.Id, nombre);
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
   } catch (err) {
