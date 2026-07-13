@@ -31,10 +31,10 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 900, margin: '2rem auto', padding: '0 1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Dentalink → QuickBooks</h1>
-        <div>
-          <span style={{ marginRight: '0.75rem', color: '#666' }}>{session.user.email}</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.8rem)' }}>Dentalink → QuickBooks</h1>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ color: '#666' }}>{session.user.email}</span>
           <button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
         </div>
       </div>

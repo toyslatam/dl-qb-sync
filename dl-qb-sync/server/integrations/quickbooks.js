@@ -182,6 +182,22 @@ export function createInvoice(invoicePayload) {
   return qboFetch('/invoice', { method: 'POST', body: invoicePayload });
 }
 
+export function createItem(itemPayload) {
+  return qboFetch('/item', { method: 'POST', body: itemPayload });
+}
+
+export function createPayment(paymentPayload) {
+  return qboFetch('/payment', { method: 'POST', body: paymentPayload });
+}
+
+/** Cuentas de tipo Ingreso, para asociar a un Item nuevo (requerido por QBO). */
+export async function getIncomeAccounts() {
+  const result = await qboQuery(
+    `select * from Account where AccountType = 'Income' and Active = true MAXRESULTS 50`
+  );
+  return result.QueryResponse?.Account ?? [];
+}
+
 function escapeQboLiteral(value) {
   return String(value).replace(/'/g, "\\'");
 }

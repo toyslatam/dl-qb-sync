@@ -7,12 +7,15 @@ import { createClient } from '@supabase/supabase-js';
 import { runSyncCycle, runSyncForPaciente, createInvoiceFromQueue } from './sync/invoiceSync.js';
 import { getPendingDrafts, getDraft, upsertDraft, upsertItemIndex, upsertCustomerIndex } from './db/store.js';
 import { buildSuffixedName } from './matching/customerMatch.js';
+import { normalizeKey } from './matching/itemMatch.js';
 import {
   getAuthorizeUri,
   handleOAuthCallback,
   searchCustomers,
   searchItems,
   createCustomer,
+  createItem,
+  getIncomeAccounts,
 } from './integrations/quickbooks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -144,6 +147,54 @@ app.patch('/api/review-queue/:idPago/lineas/:idDetalle', async (req, res) => {
   }
 });
 
+// Eliminar una linea del borrador (ej. una prestacion que no corresponde a este pago).
+app.delete('/api/review-queue/:idPago/lineas/:idDetalle', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+
+    const draft = row.draft;
+    draft.lineas = draft.lineas.filter((l) => String(l.idDetalle) !== req.params.idDetalle);
+
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Agregar una linea manual al borrador (ej. un cargo que no vino de Dentalink).
+app.post('/api/review-queue/:idPago/lineas', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+    const { nombre, precio, cantidad } = req.body ?? {};
+    if (!nombre) return res.status(400).json({ error: 'nombre requerido' });
+
+    const draft = row.draft;
+    const idDetalle = `manual-${Date.now()}`;
+    const precioNum = precio !== undefined && precio !== '' ? Number(precio) : null;
+    draft.lineas.push({
+      key: normalizeKey(nombre),
+      idTratamiento: null,
+      idDetalle,
+      nombre,
+      precio: precioNum,
+      cantidad: cantidad ? Number(cantidad) : 1,
+      qbItemId: null,
+      qbItemName: null,
+      estado: precioNum === null ? 'necesita_precio' : 'necesita_item',
+    });
+
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Asignar un Item de QuickBooks a una linea del borrador (y recordar el mapeo para el futuro).
 app.post('/api/review-queue/:idPago/lineas/:idDetalle/asignar-item', async (req, res) => {
   try {
@@ -163,6 +214,42 @@ app.post('/api/review-queue/:idPago/lineas/:idDetalle/asignar-item', async (req,
     await upsertItemIndex(linea.key, qbItemId, qbItemName ?? linea.nombre);
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear un Item (producto/servicio) nuevo en QuickBooks para esta linea y asignarlo.
+app.post('/api/review-queue/:idPago/lineas/:idDetalle/crear-item', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+    const { nombre } = req.body ?? {};
+
+    const draft = row.draft;
+    const linea = draft.lineas.find((l) => String(l.idDetalle) === req.params.idDetalle);
+    if (!linea) return res.status(404).json({ error: 'Linea no encontrada' });
+
+    const cuentas = await getIncomeAccounts();
+    if (cuentas.length === 0) {
+      return res.status(400).json({ error: 'No hay ninguna cuenta de Ingreso activa en QuickBooks para asociar el item' });
+    }
+
+    const nombreItem = nombre || linea.nombre;
+    const created = await createItem({
+      Name: nombreItem,
+      Type: 'Service',
+      IncomeAccountRef: { value: cuentas[0].Id, name: cuentas[0].Name },
+    });
+
+    linea.qbItemId = created.Item.Id;
+    linea.qbItemName = created.Item.Name;
+    linea.estado = linea.precio !== null ? 'matched' : 'necesita_precio';
+
+    await upsertItemIndex(linea.key, created.Item.Id, created.Item.Name);
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json({ draft, cuentaIngresoUsada: cuentas[0].Name });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -211,9 +298,11 @@ app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
 });
 
 // Crear en QuickBooks la factura de un borrador ya resuelto (cliente + todas las lineas matcheadas).
+// Si el body trae { registrarPago: true }, tambien crea un Payment vinculado para dejarla pagada.
 app.post('/api/review-queue/:idPago/crear-factura', async (req, res) => {
   try {
-    const created = await createInvoiceFromQueue(req.params.idPago);
+    const { registrarPago } = req.body ?? {};
+    const created = await createInvoiceFromQueue(req.params.idPago, { registrarPago: Boolean(registrarPago) });
     res.json(created);
   } catch (err) {
     console.error(err);

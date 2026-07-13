@@ -72,10 +72,15 @@ npm run inspect -- --paciente=12345
   el pago completo queda como **borrador editable** en la cola de revisión
   (`server/db/store.js`, tabla `review_queue`) en vez de crearse a medias.
 - Desde la web (`ReviewQueue` + `DraftRow`) se puede: buscar y asignar un Item
-  de QuickBooks a una línea, editar precio/cantidad a mano, buscar y asignar
+  de QuickBooks a una línea, **crear un Item nuevo** si no existe (usa la
+  primera cuenta de Ingreso activa), editar precio/cantidad a mano, **eliminar
+  líneas** que no correspondan, **agregar líneas manuales**, buscar y asignar
   un Customer existente, o crear uno nuevo (con el sufijo `- DL{id}` para que
-  matchee automáticamente la próxima vez). Recién cuando cliente + todas las
-  líneas están resueltas se habilita "Crear factura en QuickBooks".
+  matchee automáticamente la próxima vez). Hay una vista previa de cómo
+  quedará la factura antes de crearla. Recién cuando cliente + todas las
+  líneas están resueltas se habilita "Crear factura en QuickBooks", con la
+  opción de además **registrar el pago/depósito** para dejarla cerrada (el
+  pago ya ocurrió en Dentalink, esto solo lo refleja en QuickBooks).
 - El índice de matching (`customer_index` / `item_index`) se reconstruye en
   cada corrida leyendo QuickBooks, así que siempre refleja el estado actual.
   Cada asignación manual también actualiza este índice para que la próxima

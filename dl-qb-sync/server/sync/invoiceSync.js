@@ -1,5 +1,5 @@
 import { getPagos, getPagosByPaciente, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
-import { createInvoice } from '../integrations/quickbooks.js';
+import { createInvoice, createPayment } from '../integrations/quickbooks.js';
 import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
 import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem } from '../db/store.js';
@@ -141,8 +141,13 @@ export async function runSyncForPaciente(idPaciente) {
   return result;
 }
 
-/** Crea en QuickBooks la factura de un borrador ya resuelto en la cola de revision. */
-export async function createInvoiceFromQueue(idPago) {
+/**
+ * Crea en QuickBooks la factura de un borrador ya resuelto en la cola de
+ * revision. Si registrarPago es true, ademas crea un Payment vinculado a esa
+ * factura por el monto total, para dejarla cerrada/pagada (el pago ya ocurrio
+ * en Dentalink, esto solo lo refleja en QuickBooks).
+ */
+export async function createInvoiceFromQueue(idPago, { registrarPago = false } = {}) {
   const drafts = await getPendingDrafts();
   const row = drafts.find((d) => d.id_pago === String(idPago));
   if (!row) throw new Error(`No hay borrador pendiente para el pago ${idPago}`);
@@ -150,6 +155,22 @@ export async function createInvoiceFromQueue(idPago) {
 
   const created = await createInvoice(invoicePayloadFromDraft(row.draft));
   await markInvoiceSynced(idPago, created.Invoice.Id);
+
+  let payment = null;
+  if (registrarPago) {
+    const totalAmt = Number(created.Invoice.TotalAmt);
+    payment = await createPayment({
+      CustomerRef: { value: row.draft.customerMatch.qbCustomerId },
+      TotalAmt: totalAmt,
+      Line: [
+        {
+          Amount: totalAmt,
+          LinkedTxn: [{ TxnId: created.Invoice.Id, TxnType: 'Invoice' }],
+        },
+      ],
+    });
+  }
+
   await resolveReviewItem(idPago);
-  return created;
+  return { invoice: created, payment };
 }
