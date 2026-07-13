@@ -115,4 +115,20 @@ export async function resolveReviewItem(idPago) {
   assertOk(error, 'resolveReviewItem');
 }
 
+/** Guarda valores sueltos que deben sobrevivir reinicios (ej. el refresh_token vigente de QuickBooks). */
+export async function setSetting(key, value) {
+  const { error } = await supabase.from('oauth_tokens').upsert({
+    key,
+    value,
+    updated_at: new Date().toISOString(),
+  });
+  assertOk(error, 'setSetting');
+}
+
+export async function getSetting(key) {
+  const { data, error } = await supabase.from('oauth_tokens').select('value').eq('key', key).maybeSingle();
+  assertOk(error, 'getSetting');
+  return data?.value ?? null;
+}
+
 export default supabase;

@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import fetch from 'node-fetch';
 import OAuthClient from 'intuit-oauth';
+import { getSetting, setSetting } from '../db/store.js';
+
+const REFRESH_TOKEN_KEY = 'qbo_refresh_token';
 
 const oauthClient = new OAuthClient({
   clientId: process.env.QBO_CLIENT_ID,
@@ -56,7 +59,9 @@ export async function handleOAuthCallback(redirectedUrl) {
   });
   const token = authResponse.getJson();
   cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
-  // El refresh_token se debe guardar en .env (QBO_REFRESH_TOKEN) para no repetir el login.
+  // Intuit rota el refresh_token en cada uso; se persiste en Supabase para
+  // sobrevivir reinicios (la variable de entorno solo sirve de arranque inicial).
+  await setSetting(REFRESH_TOKEN_KEY, token.refresh_token);
   return token;
 }
 
@@ -65,7 +70,8 @@ async function ensureAccessToken() {
     return cachedToken.access_token;
   }
 
-  const refreshToken = cachedToken?.refresh_token || process.env.QBO_REFRESH_TOKEN;
+  const refreshToken =
+    cachedToken?.refresh_token || (await getSetting(REFRESH_TOKEN_KEY)) || process.env.QBO_REFRESH_TOKEN;
   if (!refreshToken) {
     throw new Error(
       'No hay refresh token de QuickBooks disponible. Completa el login OAuth en /api/qbo/connect primero.'
@@ -76,6 +82,7 @@ async function ensureAccessToken() {
   const authResponse = await withRetry(() => oauthClient.refresh());
   const token = authResponse.getJson();
   cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
+  await setSetting(REFRESH_TOKEN_KEY, token.refresh_token);
   return cachedToken.access_token;
 }
 

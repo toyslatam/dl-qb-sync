@@ -32,6 +32,15 @@ create table if not exists review_queue (
   resolved boolean not null default false
 );
 
+-- Guarda el refresh_token vigente de QuickBooks (Intuit lo rota en cada uso,
+-- asi que hay que persistir el mas reciente en vez de depender solo de la
+-- variable de entorno, o se rompe cada vez que el servidor se reinicia).
+create table if not exists oauth_tokens (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -39,3 +48,4 @@ alter table customer_index enable row level security;
 alter table item_index enable row level security;
 alter table synced_invoices enable row level security;
 alter table review_queue enable row level security;
+alter table oauth_tokens enable row level security;
