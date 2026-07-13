@@ -19,23 +19,37 @@ export default function SearchPicker({ endpoint, labelKey, onPick, placeholder }
   }
 
   return (
-    <div style={{ display: 'inline-block' }}>
-      <input
-        value={query}
-        placeholder={placeholder}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && search()}
-        style={{ width: 180 }}
-      />
-      <button onClick={search} disabled={loading}>
-        Buscar
-      </button>
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <div className="row" style={{ gap: 'var(--space-1)' }}>
+        <input
+          value={query}
+          placeholder={placeholder}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && search()}
+          style={{ width: 170 }}
+        />
+        <button onClick={search} disabled={loading}>
+          {loading ? '…' : 'Buscar'}
+        </button>
+      </div>
       {results.length > 0 && (
-        <ul style={{ listStyle: 'none', margin: '0.25rem 0', padding: 0, border: '1px solid #ccc', maxWidth: 260 }}>
+        <ul
+          className="card"
+          style={{
+            listStyle: 'none',
+            position: 'absolute',
+            zIndex: 10,
+            margin: '0.25rem 0 0',
+            padding: '0.25rem',
+            width: 240,
+            maxHeight: 220,
+            overflowY: 'auto',
+          }}
+        >
           {results.map((r) => (
             <li key={r.Id}>
               <button
-                style={{ width: '100%', textAlign: 'left' }}
+                style={{ width: '100%', textAlign: 'left', border: 'none', background: 'none' }}
                 onClick={() => {
                   onPick(r);
                   setResults([]);

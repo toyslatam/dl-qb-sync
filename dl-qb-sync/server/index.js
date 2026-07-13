@@ -16,6 +16,9 @@ import {
   createCustomer,
   createItem,
   getIncomeAccounts,
+  getTerms,
+  getPaymentMethods,
+  getDepositAccounts,
 } from './integrations/quickbooks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -297,6 +300,40 @@ app.post('/api/review-queue/:idPago/crear-cliente', async (req, res) => {
   }
 });
 
+// Editar el encabezado de la factura (N. de documento, fechas, terminos, notas, impuesto).
+app.patch('/api/review-queue/:idPago/factura', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+
+    const draft = row.draft;
+    draft.factura = { ...draft.factura, ...req.body };
+
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Editar los datos del deposito/pago (monto, metodo, referencia, cuenta destino).
+app.patch('/api/review-queue/:idPago/deposito', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+
+    const draft = row.draft;
+    draft.deposito = { ...draft.deposito, ...req.body };
+
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Crear en QuickBooks la factura de un borrador ya resuelto (cliente + todas las lineas matcheadas).
 // Si el body trae { registrarPago: true }, tambien crea un Payment vinculado para dejarla pagada.
 app.post('/api/review-queue/:idPago/crear-factura', async (req, res) => {
@@ -323,6 +360,33 @@ app.get('/api/qbo/items/buscar', async (req, res) => {
 app.get('/api/qbo/customers/buscar', async (req, res) => {
   try {
     res.json(await searchCustomers(req.query.q ?? ''));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/qbo/terminos', async (_req, res) => {
+  try {
+    res.json(await getTerms());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/qbo/metodos-pago', async (_req, res) => {
+  try {
+    res.json(await getPaymentMethods());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/qbo/cuentas-deposito', async (_req, res) => {
+  try {
+    res.json(await getDepositAccounts());
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

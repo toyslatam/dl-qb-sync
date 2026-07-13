@@ -1,8 +1,17 @@
 import { getPagos, getPagosByPaciente, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
-import { createInvoice, createPayment } from '../integrations/quickbooks.js';
+import { createInvoice } from '../integrations/quickbooks.js';
 import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
 import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem } from '../db/store.js';
+
+// Mapeo de medio_pago (Dentalink) -> PaymentMethodRef (QuickBooks), igual al
+// que ya se usaba en el flujo de Power Automate para esta misma empresa.
+const PAYMENT_METHOD_IDS = {
+  Efectivo: '2',
+  'Tarjeta de crédito (Visa o Master Card)': '4',
+  'Transferencia electrónica (ACH)': '5',
+  'Yappy - Banco General': '1000000001',
+};
 
 /**
  * Junta las lineas (prestaciones) de todos los tratamientos vigentes de un
@@ -42,6 +51,8 @@ async function getLineasCandidatas(idPaciente) {
 
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await matchCustomer(idPaciente);
+  const docNumber = pago.folio ?? pago.id;
+
   return {
     idPaciente: String(idPaciente),
     pago: {
@@ -49,9 +60,28 @@ async function buildDraft(idPaciente, pago, lineas) {
       monto: pago.monto_pago,
       fecha: pago.fecha_recepcion,
       folioBoleta: pago.folio ?? null,
+      medioPago: pago.medio_pago ?? null,
+      referencia: pago.numero_referencia ?? null,
     },
     customerMatch,
     lineas,
+    // Datos de encabezado de la factura, editables antes de crearla.
+    factura: {
+      docNumber,
+      trackingNum: docNumber,
+      txnDate: pago.fecha_recepcion,
+      dueDate: pago.fecha_recepcion,
+      termRef: process.env.QBO_SALES_TERM_ID || null,
+      customerMemo: pago.numero_referencia ?? '',
+      taxCodeRef: process.env.QBO_TAX_CODE_ID || null,
+    },
+    // Datos del deposito/pago que se registra al mismo tiempo que la factura.
+    deposito: {
+      monto: pago.monto_pago,
+      metodoPagoRef: PAYMENT_METHOD_IDS[pago.medio_pago] ?? null,
+      depositarEnRef: process.env.QBO_DEPOSIT_ACCOUNT_ID || null,
+      numeroReferencia: pago.numero_referencia ?? '',
+    },
   };
 }
 
@@ -60,10 +90,12 @@ export function isDraftReady(draft) {
 }
 
 export function invoicePayloadFromDraft(draft) {
-  return {
+  const f = draft.factura ?? {};
+  const payload = {
     CustomerRef: { value: draft.customerMatch.qbCustomerId },
-    TxnDate: draft.pago.fecha,
-    DocNumber: String(draft.pago.folioBoleta ?? draft.pago.id),
+    TxnDate: f.txnDate || draft.pago.fecha,
+    DocNumber: String(f.docNumber ?? draft.pago.folioBoleta ?? draft.pago.id),
+    TrackingNum: String(f.trackingNum ?? draft.pago.folioBoleta ?? draft.pago.id),
     Line: draft.lineas.map((l) => ({
       DetailType: 'SalesItemLineDetail',
       Amount: l.precio * (l.cantidad ?? 1),
@@ -74,6 +106,11 @@ export function invoicePayloadFromDraft(draft) {
       },
     })),
   };
+  if (f.dueDate) payload.DueDate = f.dueDate;
+  if (f.customerMemo) payload.CustomerMemo = { value: f.customerMemo };
+  if (f.termRef) payload.SalesTermRef = { value: String(f.termRef) };
+  if (f.taxCodeRef) payload.TxnTaxDetail = { TxnTaxCodeRef: { value: String(f.taxCodeRef) } };
+  return payload;
 }
 
 /**
@@ -143,9 +180,10 @@ export async function runSyncForPaciente(idPaciente) {
 
 /**
  * Crea en QuickBooks la factura de un borrador ya resuelto en la cola de
- * revision. Si registrarPago es true, ademas crea un Payment vinculado a esa
- * factura por el monto total, para dejarla cerrada/pagada (el pago ya ocurrio
- * en Dentalink, esto solo lo refleja en QuickBooks).
+ * revision. Si registrarPago es true, se incluye el campo Deposit (y su
+ * cuenta/metodo de pago) directo en la factura, que es como QuickBooks
+ * registra el pago al mismo tiempo que crea el documento (sin necesidad de
+ * un Payment aparte).
  */
 export async function createInvoiceFromQueue(idPago, { registrarPago = false } = {}) {
   const drafts = await getPendingDrafts();
@@ -153,24 +191,16 @@ export async function createInvoiceFromQueue(idPago, { registrarPago = false } =
   if (!row) throw new Error(`No hay borrador pendiente para el pago ${idPago}`);
   if (!isDraftReady(row.draft)) throw new Error('El borrador aun tiene lineas o cliente sin resolver');
 
-  const created = await createInvoice(invoicePayloadFromDraft(row.draft));
-  await markInvoiceSynced(idPago, created.Invoice.Id);
-
-  let payment = null;
+  const payload = invoicePayloadFromDraft(row.draft);
   if (registrarPago) {
-    const totalAmt = Number(created.Invoice.TotalAmt);
-    payment = await createPayment({
-      CustomerRef: { value: row.draft.customerMatch.qbCustomerId },
-      TotalAmt: totalAmt,
-      Line: [
-        {
-          Amount: totalAmt,
-          LinkedTxn: [{ TxnId: created.Invoice.Id, TxnType: 'Invoice' }],
-        },
-      ],
-    });
+    const d = row.draft.deposito ?? {};
+    payload.Deposit = Number(d.monto ?? row.draft.pago.monto ?? 0);
+    if (d.depositarEnRef) payload.DepositToAccountRef = { value: String(d.depositarEnRef) };
+    if (d.metodoPagoRef) payload.PaymentMethodRef = { value: String(d.metodoPagoRef) };
   }
 
+  const created = await createInvoice(payload);
+  await markInvoiceSynced(idPago, created.Invoice.Id);
   await resolveReviewItem(idPago);
-  return { invoice: created, payment };
+  return { invoice: created };
 }

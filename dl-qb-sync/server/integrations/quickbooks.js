@@ -186,14 +186,30 @@ export function createItem(itemPayload) {
   return qboFetch('/item', { method: 'POST', body: itemPayload });
 }
 
-export function createPayment(paymentPayload) {
-  return qboFetch('/payment', { method: 'POST', body: paymentPayload });
-}
-
 /** Cuentas de tipo Ingreso, para asociar a un Item nuevo (requerido por QBO). */
 export async function getIncomeAccounts() {
   const result = await qboQuery(
     `select * from Account where AccountType = 'Income' and Active = true MAXRESULTS 50`
+  );
+  return result.QueryResponse?.Account ?? [];
+}
+
+/** Terminos de venta (Due on receipt, Net 30, etc), para el campo SalesTermRef de la factura. */
+export async function getTerms() {
+  const result = await qboQuery(`select * from Term MAXRESULTS 50`);
+  return result.QueryResponse?.Term ?? [];
+}
+
+/** Metodos de pago configurados en QuickBooks (Efectivo, Tarjeta, etc). */
+export async function getPaymentMethods() {
+  const result = await qboQuery(`select * from PaymentMethod where Active = true MAXRESULTS 50`);
+  return result.QueryResponse?.PaymentMethod ?? [];
+}
+
+/** Cuentas bancarias/de caja donde depositar el pago (DepositToAccountRef). */
+export async function getDepositAccounts() {
+  const result = await qboQuery(
+    `select * from Account where AccountType in ('Bank','Other Current Asset') and Active = true MAXRESULTS 50`
   );
   return result.QueryResponse?.Account ?? [];
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { apiFetch } from '../lib/api.js';
 import SearchPicker from './SearchPicker.jsx';
+import QboSelect from './QboSelect.jsx';
 
-const ESTADO_LABELS = {
-  matched: '✅ ok',
-  necesita_item: '⚠️ falta item QuickBooks',
-  necesita_precio: '⚠️ falta precio',
+const ESTADO_BADGE = {
+  matched: { label: 'ok', className: 'badge-success' },
+  necesita_item: { label: 'falta item QuickBooks', className: 'badge-warning' },
+  necesita_precio: { label: 'falta precio', className: 'badge-warning' },
 };
 
 async function api(path, options) {
@@ -19,7 +20,7 @@ export default function DraftRow({ row, onChange }) {
   const [draft, setDraft] = useState(row.draft);
   const [creatingCustomerName, setCreatingCustomerName] = useState('');
   const [nuevaLinea, setNuevaLinea] = useState({ nombre: '', precio: '', cantidad: 1 });
-  const [creatingItemFor, setCreatingItemFor] = useState(null); // idDetalle en edicion
+  const [itemEditorFor, setItemEditorFor] = useState(null); // idDetalle cuyo item se esta asignando/cambiando
   const [registrarPago, setRegistrarPago] = useState(true);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
@@ -43,13 +44,14 @@ export default function DraftRow({ row, onChange }) {
     }
   }
 
-  function asignarItem(idDetalle, item) {
-    return run(() =>
+  async function asignarItem(idDetalle, item) {
+    const result = await run(() =>
       api(`/api/review-queue/${idPago}/lineas/${idDetalle}/asignar-item`, {
         method: 'POST',
         body: JSON.stringify({ qbItemId: item.Id, qbItemName: item.Name }),
       })
     );
+    if (result) setItemEditorFor(null);
   }
 
   async function crearItem(idDetalle, nombreSugerido) {
@@ -63,7 +65,7 @@ export default function DraftRow({ row, onChange }) {
     if (result) {
       setDraft(result.draft);
       setInfo(`Item creado en QuickBooks (cuenta de ingreso: ${result.cuentaIngresoUsada})`);
-      setCreatingItemFor(null);
+      setItemEditorFor(null);
     }
   }
 
@@ -110,6 +112,24 @@ export default function DraftRow({ row, onChange }) {
     );
   }
 
+  function actualizarFactura(campo, valor) {
+    return run(() =>
+      api(`/api/review-queue/${idPago}/factura`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [campo]: valor }),
+      })
+    );
+  }
+
+  function actualizarDeposito(campo, valor) {
+    return run(() =>
+      api(`/api/review-queue/${idPago}/deposito`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [campo]: valor }),
+      })
+    );
+  }
+
   async function crearFactura() {
     setBusy(true);
     setError(null);
@@ -127,23 +147,25 @@ export default function DraftRow({ row, onChange }) {
   }
 
   return (
-    <div style={{ border: '1px solid #ddd', borderRadius: 6, padding: '0.75rem', marginBottom: '0.75rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }}>
+    <div className="draft-card">
+      <div className="draft-header">
         <strong>
           Pago #{idPago} · Paciente {draft.idPaciente} · ${draft.pago.monto} · {draft.pago.fecha}
         </strong>
-        <span>{lista ? '✅ listo para crear' : '⏳ pendiente'}</span>
+        <span className={`badge ${lista ? 'badge-success' : 'badge-pending'}`}>
+          {lista ? '✅ listo para crear' : '⏳ pendiente'}
+        </span>
       </div>
 
-      <div style={{ margin: '0.5rem 0', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-        <b>Cliente en QuickBooks: </b>
+      <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
+        <b>Cliente en QuickBooks:</b>
         {draft.customerMatch ? (
           <span>{draft.customerMatch.qbDisplayName || `(id ${draft.customerMatch.qbCustomerId})`}</span>
         ) : (
           <>
-            <span style={{ color: 'crimson' }}>sin asignar</span>
+            <span className="text-danger">sin asignar</span>
             <SearchPicker endpoint="/api/qbo/customers/buscar" labelKey="DisplayName" onPick={asignarCliente} placeholder="Buscar cliente…" />
-            <span>o</span>
+            <span className="text-muted">o</span>
             <input
               placeholder="Nombre para crear cliente nuevo"
               value={creatingCustomerName}
@@ -157,10 +179,10 @@ export default function DraftRow({ row, onChange }) {
         )}
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: 640 }}>
+      <div className="table-wrap">
+        <table className="data-table">
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+            <tr>
               <th>Prestación</th>
               <th>Precio</th>
               <th>Cant.</th>
@@ -170,60 +192,64 @@ export default function DraftRow({ row, onChange }) {
             </tr>
           </thead>
           <tbody>
-            {draft.lineas.map((linea) => (
-              <tr key={linea.idDetalle} style={{ borderBottom: '1px solid #eee' }}>
-                <td>{linea.nombre}</td>
-                <td>
-                  <input
-                    type="number"
-                    value={linea.precio ?? ''}
-                    style={{ width: 90 }}
-                    onChange={(e) => editarLinea(linea.idDetalle, 'precio', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={linea.cantidad ?? 1}
-                    style={{ width: 50 }}
-                    onChange={(e) => editarLinea(linea.idDetalle, 'cantidad', e.target.value)}
-                  />
-                </td>
-                <td>{ESTADO_LABELS[linea.estado] || linea.estado}</td>
-                <td>
-                  {linea.qbItemId ? (
-                    <code>{linea.qbItemName || linea.qbItemId}</code>
-                  ) : creatingItemFor === linea.idDetalle ? (
-                    <CrearItemInline
-                      nombreInicial={linea.nombre}
-                      busy={busy}
-                      onCancel={() => setCreatingItemFor(null)}
-                      onCrear={(nombre) => crearItem(linea.idDetalle, nombre)}
+            {draft.lineas.map((linea) => {
+              const badge = ESTADO_BADGE[linea.estado] || { label: linea.estado, className: 'badge-pending' };
+              const editandoItem = itemEditorFor === linea.idDetalle;
+              return (
+                <tr key={linea.idDetalle}>
+                  <td>{linea.nombre}</td>
+                  <td>
+                    <input
+                      type="number"
+                      value={linea.precio ?? ''}
+                      style={{ width: 90 }}
+                      onChange={(e) => editarLinea(linea.idDetalle, 'precio', e.target.value)}
                     />
-                  ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
-                      <SearchPicker
-                        endpoint="/api/qbo/items/buscar"
-                        labelKey="Name"
-                        onPick={(item) => asignarItem(linea.idDetalle, item)}
-                        placeholder="Buscar item…"
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={linea.cantidad ?? 1}
+                      style={{ width: 50 }}
+                      onChange={(e) => editarLinea(linea.idDetalle, 'cantidad', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <span className={`badge ${badge.className}`}>{badge.label}</span>
+                  </td>
+                  <td>
+                    {editandoItem ? (
+                      <ItemEditor
+                        nombreSugerido={linea.nombre}
+                        busy={busy}
+                        onAsignar={(item) => asignarItem(linea.idDetalle, item)}
+                        onCrear={(nombre) => crearItem(linea.idDetalle, nombre)}
+                        onCancel={() => setItemEditorFor(null)}
                       />
-                      <button onClick={() => setCreatingItemFor(linea.idDetalle)}>+ nuevo item</button>
-                    </div>
-                  )}
-                </td>
-                <td>
-                  <button onClick={() => eliminarLinea(linea.idDetalle)} disabled={busy} title="Eliminar linea">
-                    🗑
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    ) : linea.qbItemId ? (
+                      <span className="row" style={{ gap: 'var(--space-1)' }}>
+                        <code>{linea.qbItemName || linea.qbItemId}</code>
+                        <button className="btn-icon" onClick={() => setItemEditorFor(linea.idDetalle)}>
+                          cambiar
+                        </button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setItemEditorFor(linea.idDetalle)}>Asignar item</button>
+                    )}
+                  </td>
+                  <td>
+                    <button className="btn-icon" onClick={() => eliminarLinea(linea.idDetalle)} disabled={busy} title="Eliminar línea">
+                      🗑
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginTop: '0.5rem' }}>
+      <div className="new-line-form">
         <input
           placeholder="Nombre de la línea"
           value={nuevaLinea.nombre}
@@ -249,37 +275,144 @@ export default function DraftRow({ row, onChange }) {
         </button>
       </div>
 
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {info && <p style={{ color: 'green' }}>{info}</p>}
+      {error && <p className="text-danger">{error}</p>}
+      {info && <p className="text-success">{info}</p>}
+
+      <details className="preview-box">
+        <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Detalles de factura</summary>
+        <div className="stack" style={{ marginTop: 'var(--space-3)' }}>
+          <div className="row">
+            <label className="field-label">
+              N.° de factura
+              <input
+                value={draft.factura?.docNumber ?? ''}
+                onChange={(e) => actualizarFactura('docNumber', e.target.value)}
+                style={{ width: 140 }}
+              />
+            </label>
+            <label className="field-label">
+              Términos
+              <QboSelect
+                endpoint="/api/qbo/terminos"
+                value={draft.factura?.termRef}
+                onChange={(v) => actualizarFactura('termRef', v)}
+                placeholder="(sin término)"
+              />
+            </label>
+          </div>
+          <div className="row">
+            <label className="field-label">
+              Fecha de factura
+              <input
+                type="date"
+                value={draft.factura?.txnDate ?? ''}
+                onChange={(e) => actualizarFactura('txnDate', e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Fecha de vencimiento
+              <input
+                type="date"
+                value={draft.factura?.dueDate ?? ''}
+                onChange={(e) => actualizarFactura('dueDate', e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="field-label">
+            Nota para el cliente
+            <input
+              value={draft.factura?.customerMemo ?? ''}
+              onChange={(e) => actualizarFactura('customerMemo', e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </label>
+        </div>
+      </details>
 
       <FacturaPreview draft={draft} />
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
-        <label>
-          <input type="checkbox" checked={registrarPago} onChange={(e) => setRegistrarPago(e.target.checked)} />{' '}
+      <div className="stack" style={{ marginTop: 'var(--space-2)' }}>
+        <label className="row" style={{ gap: 'var(--space-1)' }}>
+          <input type="checkbox" checked={registrarPago} onChange={(e) => setRegistrarPago(e.target.checked)} />
           Registrar pago/depósito al crear (deja la factura cerrada)
         </label>
+
+        {registrarPago && (
+          <div className="preview-box row">
+            <label className="field-label">
+              Monto del depósito
+              <input
+                type="number"
+                value={draft.deposito?.monto ?? ''}
+                onChange={(e) => actualizarDeposito('monto', e.target.value)}
+                style={{ width: 110 }}
+              />
+            </label>
+            <label className="field-label">
+              Método de pago
+              <QboSelect
+                endpoint="/api/qbo/metodos-pago"
+                value={draft.deposito?.metodoPagoRef}
+                onChange={(v) => actualizarDeposito('metodoPagoRef', v)}
+                placeholder="(opcional)"
+              />
+            </label>
+            <label className="field-label">
+              N.° de referencia
+              <input
+                value={draft.deposito?.numeroReferencia ?? ''}
+                onChange={(e) => actualizarDeposito('numeroReferencia', e.target.value)}
+                style={{ width: 140 }}
+              />
+            </label>
+            <label className="field-label">
+              Depositar en
+              <QboSelect
+                endpoint="/api/qbo/cuentas-deposito"
+                value={draft.deposito?.depositarEnRef}
+                onChange={(v) => actualizarDeposito('depositarEnRef', v)}
+                placeholder="(sin cuenta)"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
-      <button onClick={crearFactura} disabled={!lista || busy} style={{ marginTop: '0.5rem' }}>
+      <button className="btn-primary" onClick={crearFactura} disabled={!lista || busy} style={{ marginTop: 'var(--space-2)' }}>
         {busy ? 'Creando…' : registrarPago ? 'Crear factura y registrar pago' : 'Crear factura en QuickBooks'}
       </button>
     </div>
   );
 }
 
-/** Formulario chico para crear un Item nuevo en QuickBooks al vuelo. */
-function CrearItemInline({ nombreInicial, busy, onCancel, onCrear }) {
-  const [nombre, setNombre] = useState(nombreInicial);
+/** Buscar un Item existente o crear uno nuevo, para asignar/cambiar la linea. */
+function ItemEditor({ nombreSugerido, busy, onAsignar, onCrear, onCancel }) {
+  const [modo, setModo] = useState('buscar'); // 'buscar' | 'crear'
+  const [nombre, setNombre] = useState(nombreSugerido);
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
-      <input value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ width: 180 }} />
-      <button onClick={() => onCrear(nombre)} disabled={busy || !nombre.trim()}>
-        Crear en QuickBooks
-      </button>
-      <button onClick={onCancel} disabled={busy}>
-        Cancelar
-      </button>
+    <div className="stack" style={{ minWidth: 220 }}>
+      <div className="row">
+        <button className={modo === 'buscar' ? 'btn-primary' : ''} onClick={() => setModo('buscar')}>
+          Buscar existente
+        </button>
+        <button className={modo === 'crear' ? 'btn-primary' : ''} onClick={() => setModo('crear')}>
+          Crear nuevo
+        </button>
+        <button className="btn-icon" onClick={onCancel} disabled={busy}>
+          ✕
+        </button>
+      </div>
+      {modo === 'buscar' ? (
+        <SearchPicker endpoint="/api/qbo/items/buscar" labelKey="Name" onPick={onAsignar} placeholder="Buscar item…" />
+      ) : (
+        <div className="row">
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ width: 180 }} />
+          <button className="btn-primary" onClick={() => onCrear(nombre)} disabled={busy || !nombre.trim()}>
+            Crear en QuickBooks
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -289,28 +422,34 @@ function FacturaPreview({ draft }) {
   const total = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
 
   return (
-    <div style={{ background: '#f7f7f7', border: '1px dashed #bbb', borderRadius: 6, padding: '0.75rem', margin: '0.75rem 0' }}>
+    <div className="preview-box">
       <b>Vista previa de la factura</b>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '0.4rem' }}>
+      <table className="data-table" style={{ minWidth: 'auto', marginTop: 'var(--space-2)' }}>
         <tbody>
           <tr>
-            <td style={{ color: '#666' }}>Cliente</td>
+            <td className="text-muted">Cliente</td>
             <td>{draft.customerMatch?.qbDisplayName || draft.customerMatch?.qbCustomerId || '(sin asignar)'}</td>
           </tr>
           <tr>
-            <td style={{ color: '#666' }}>N° documento</td>
-            <td>{draft.pago.folioBoleta ?? draft.pago.id}</td>
+            <td className="text-muted">N° documento</td>
+            <td>{draft.factura?.docNumber ?? draft.pago.folioBoleta ?? draft.pago.id}</td>
           </tr>
           <tr>
-            <td style={{ color: '#666' }}>Fecha</td>
-            <td>{draft.pago.fecha}</td>
+            <td className="text-muted">Fecha</td>
+            <td>{draft.factura?.txnDate ?? draft.pago.fecha}</td>
           </tr>
+          {draft.factura?.dueDate && (
+            <tr>
+              <td className="text-muted">Vencimiento</td>
+              <td>{draft.factura.dueDate}</td>
+            </tr>
+          )}
         </tbody>
       </table>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '0.5rem', minWidth: 420 }}>
+      <div className="table-wrap" style={{ marginTop: 'var(--space-2)' }}>
+        <table className="data-table">
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+            <tr>
               <th>Item</th>
               <th>Cant.</th>
               <th>Precio unit.</th>
@@ -319,7 +458,7 @@ function FacturaPreview({ draft }) {
           </thead>
           <tbody>
             {draft.lineas.map((l) => (
-              <tr key={l.idDetalle} style={{ borderBottom: '1px solid #eee' }}>
+              <tr key={l.idDetalle}>
                 <td>{l.qbItemName || l.nombre}</td>
                 <td>{l.cantidad ?? 1}</td>
                 <td>{l.precio ?? '—'}</td>

@@ -30,15 +30,26 @@ export default function App() {
   if (!session) return <Login />;
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 900, margin: '2rem auto', padding: '0 1rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.8rem)' }}>Dentalink → QuickBooks</h1>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ color: '#666' }}>{session.user.email}</span>
+    <div className="app-shell">
+      <div className="app-header">
+        <h1>Dentalink → QuickBooks</h1>
+        <div className="user-chip">
+          <span>{session.user.email}</span>
           <button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
         </div>
       </div>
-      <p>API: {health === null ? 'verificando…' : health.ok ? '✅ conectada' : '❌ sin conexion'}</p>
+      <p>
+        API:{' '}
+        {health === null ? (
+          'verificando…'
+        ) : health.ok ? (
+          <span className="badge badge-success">conectada</span>
+        ) : (
+          <span className="badge" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+            sin conexión
+          </span>
+        )}
+      </p>
       <SyncPanel onSynced={() => setReviewQueueVersion((v) => v + 1)} />
       <ReviewQueue refreshTrigger={reviewQueueVersion} />
     </div>

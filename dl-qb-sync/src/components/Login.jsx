@@ -17,41 +17,23 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 320, margin: '4rem auto', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="login-shell">
       <h1>Dentalink → QuickBooks</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '0.75rem' }}>
-          <label>
-            Email
-            <br />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{ width: '100%' }}
-            />
-          </label>
-        </div>
-        <div style={{ marginBottom: '0.75rem' }}>
-          <label>
-            Contraseña
-            <br />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{ width: '100%' }}
-            />
-          </label>
-        </div>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-        <button type="submit" disabled={busy} style={{ width: '100%' }}>
+      <form onSubmit={handleSubmit} className="stack">
+        <label className="field-label">
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label className="field-label">
+          Contraseña
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </label>
+        {error && <p className="text-danger">{error}</p>}
+        <button type="submit" className="btn-primary" disabled={busy} style={{ width: '100%' }}>
           {busy ? 'Ingresando…' : 'Ingresar'}
         </button>
       </form>
-      <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '1rem' }}>
+      <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '1rem' }}>
         Tu cuenta la crea el administrador desde el panel de Supabase (Authentication → Users).
       </p>
     </div>
