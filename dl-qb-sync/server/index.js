@@ -11,7 +11,15 @@ import {
   listarPagosDelDia,
   procesarPagoIndividual,
 } from './sync/invoiceSync.js';
-import { getPendingDrafts, getDraft, upsertDraft, upsertItemIndex, upsertCustomerIndex } from './db/store.js';
+import {
+  getPendingDrafts,
+  getDraft,
+  upsertDraft,
+  upsertItemIndex,
+  upsertCustomerIndex,
+  markInvoiceSynced,
+  unmarkInvoiceSynced,
+} from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
   getAuthorizeUri,
@@ -132,6 +140,28 @@ app.post('/api/pagos/:idPago/traer-detalle', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Marcar/desmarcar manualmente un pago como ya registrado en QuickBooks
+// (ej. si se facturo por fuera de la app, o para corregir un estado equivocado).
+app.post('/api/pagos/:idPago/marcar-registrado', async (req, res) => {
+  try {
+    await markInvoiceSynced(req.params.idPago, 'manual');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/pagos/:idPago/marcar-pendiente', async (req, res) => {
+  try {
+    await unmarkInvoiceSynced(req.params.idPago);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 });
 

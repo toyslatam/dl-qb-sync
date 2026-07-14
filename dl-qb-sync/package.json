@@ -12,6 +12,7 @@
     "dev:full": "concurrently -n web,api -c blue,green \"npm:dev\" \"npm:dev:api\"",
     "sync": "node server/sync/runOnce.js",
     "inspect": "node server/sync/inspectPaciente.js",
+    "fix-tax-codes": "node server/sync/fixItemTaxCodes.js",
     "build": "vite build",
     "start": "node server/index.js"
   },

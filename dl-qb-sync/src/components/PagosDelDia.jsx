@@ -48,6 +48,21 @@ export default function PagosDelDia({ onTraido }) {
     }
   }
 
+  async function cambiarEstado(idPago, aRegistrado) {
+    setProcesando(idPago);
+    setError(null);
+    try {
+      const ruta = aRegistrado ? 'marcar-registrado' : 'marcar-pendiente';
+      const res = await apiFetch(`/api/pagos/${idPago}/${ruta}`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error desconocido');
+      await buscar();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcesando(null);
+    }
+  }
+
   return (
     <section className="card">
       <h2>Pagos del día</h2>
@@ -63,7 +78,7 @@ export default function PagosDelDia({ onTraido }) {
 
       {error && <p className="text-danger">{error}</p>}
 
-      {pagos && pagos.length === 0 && <p className="text-muted">Sin pagos para esa fecha.</p>}
+      {pagos && pagos.length === 0 && <p className="empty-state">Sin pagos para esa fecha.</p>}
 
       {pagos && pagos.length > 0 && (
         <div className="table-wrap">
@@ -95,9 +110,20 @@ export default function PagosDelDia({ onTraido }) {
                       <span className={`badge ${badge.className}`}>{badge.label}</span>
                     </td>
                     <td>
-                      <button onClick={() => traerDetalle(p.id)} disabled={p.estado === 'sincronizado' || procesando === p.id}>
-                        {procesando === p.id ? 'Trayendo…' : p.estado === 'en_cola' ? 'Actualizar detalle' : 'Traer detalle'}
-                      </button>
+                      <div className="row" style={{ gap: 'var(--space-1)', flexWrap: 'nowrap' }}>
+                        <button onClick={() => traerDetalle(p.id)} disabled={p.estado === 'sincronizado' || procesando === p.id}>
+                          {procesando === p.id ? 'Trayendo…' : p.estado === 'en_cola' ? 'Actualizar' : 'Traer detalle'}
+                        </button>
+                        {p.estado === 'sincronizado' ? (
+                          <button className="btn-icon" onClick={() => cambiarEstado(p.id, false)} disabled={procesando === p.id} title="Marcar como pendiente">
+                            ↩︎
+                          </button>
+                        ) : (
+                          <button className="btn-icon" onClick={() => cambiarEstado(p.id, true)} disabled={procesando === p.id} title="Marcar como ya registrado en QuickBooks">
+                            ✓
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

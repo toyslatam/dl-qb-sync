@@ -80,6 +80,12 @@ export async function markInvoiceSynced(idPago, qbInvoiceId) {
   assertOk(error, 'markInvoiceSynced');
 }
 
+/** Quita la marca de sincronizado (para poder revertir un marcado manual por error). */
+export async function unmarkInvoiceSynced(idPago) {
+  const { error } = await supabase.from('synced_invoices').delete().eq('id_pago', String(idPago));
+  assertOk(error, 'unmarkInvoiceSynced');
+}
+
 export async function upsertDraft(idPago, idPaciente, draft) {
   const { error } = await supabase.from('review_queue').upsert({
     id_pago: String(idPago),

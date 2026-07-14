@@ -21,8 +21,8 @@ export default function ReviewQueue({ refreshTrigger }) {
   return (
     <section className="card">
       <h2>Cola de revisión manual</h2>
-      {loading && <p className="text-muted">Cargando…</p>}
-      {!loading && drafts.length === 0 && <p className="text-muted">Sin pendientes 🎉</p>}
+      {loading && <p className="empty-state">Cargando…</p>}
+      {!loading && drafts.length === 0 && <p className="empty-state">🎉 Sin pendientes por revisar</p>}
       {!loading &&
         drafts.map((row) => <DraftRow key={row.id_pago} row={row} onChange={load} />)}
     </section>

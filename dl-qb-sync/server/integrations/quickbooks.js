@@ -186,6 +186,11 @@ export function createItem(itemPayload) {
   return qboFetch('/item', { method: 'POST', body: itemPayload });
 }
 
+/** Actualizacion parcial (sparse) de un Item existente, ej. para corregir su codigo de impuesto. */
+export function updateItem(itemPayload) {
+  return qboFetch('/item', { method: 'POST', body: { ...itemPayload, sparse: true } });
+}
+
 /** Cuentas de tipo Ingreso, para asociar a un Item nuevo (requerido por QBO). */
 export async function getIncomeAccounts() {
   const result = await qboQuery(
