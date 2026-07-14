@@ -119,8 +119,11 @@ async function ensureAccessToken() {
 async function qboFetch(path, { method = 'GET', body } = {}) {
   const accessToken = await ensureAccessToken();
   const realmId = (process.env.QBO_REALM_ID || '').trim();
+  // minorversion fija: sin ella, POST usa una version vieja de la API cuyo
+  // manejo de impuestos automaticos (AST) difiere y puede rechazar TaxCodeRef.
+  const separator = path.includes('?') ? '&' : '?';
   const res = await withRetry(() =>
-    fetch(`${API_BASE}/v3/company/${realmId}${path}`, {
+    fetch(`${API_BASE}/v3/company/${realmId}${path}${separator}minorversion=65`, {
       method,
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -137,7 +140,7 @@ async function qboFetch(path, { method = 'GET', body } = {}) {
 }
 
 export function qboQuery(query) {
-  return qboFetch(`/query?query=${encodeURIComponent(query)}&minorversion=65`);
+  return qboFetch(`/query?query=${encodeURIComponent(query)}`);
 }
 
 /** Trae todos los Customers activos (para construir el indice de matching). */
