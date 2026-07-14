@@ -132,6 +132,10 @@ export function invoicePayloadFromDraft(draft) {
   if (f.termRef) payload.SalesTermRef = { value: String(f.termRef) };
   if (f.taxCodeRef) payload.TxnTaxDetail = { TxnTaxCodeRef: { value: String(f.taxCodeRef) } };
   if (draft.pago.folioBoleta) payload.PaymentRefNum = String(draft.pago.folioBoleta);
+  // Requerido por QuickBooks para empresas fuera de EE.UU. (segun documentacion
+  // de Intuit): indica que la transaccion esta fuera del alcance del calculo
+  // automatico de impuestos, en vez de dejar que AST intente calcular una tasa.
+  payload.GlobalTaxCalculation = 'NotApplicable';
   return payload;
 }
 
