@@ -4,14 +4,26 @@ import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.j
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
 import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem } from '../db/store.js';
 
-// Mapeo de medio_pago (Dentalink) -> PaymentMethodRef (QuickBooks), igual al
-// que ya se usaba en el flujo de Power Automate para esta misma empresa.
+// Mapeos identicos al flujo de Power Automate ya usado por esta empresa en QuickBooks.
 const PAYMENT_METHOD_IDS = {
   Efectivo: '2',
   'Tarjeta de crédito (Visa o Master Card)': '4',
   'Transferencia electrónica (ACH)': '5',
   'Yappy - Banco General': '1000000001',
+  'Tarjeta de débito (Clave)': '1000000011',
+  'Tarjeta de crédito (Visa o MasterCard) a distancia': '1000000021',
 };
+
+const DEPOSIT_ACCOUNT_IDS = {
+  Efectivo: '85',
+  'Tarjeta de crédito (Visa o Master Card)': '196',
+  'Transferencia electrónica (ACH)': '91',
+  'Yappy - Banco General': '91',
+  'Tarjeta de débito (Clave)': '196',
+  'Tarjeta de crédito (Visa o MasterCard) a distancia': '91',
+};
+
+const TAX_CODE_ID = process.env.QBO_TAX_CODE_ID || '7';
 
 /**
  * Junta las lineas (prestaciones) de todos los tratamientos vigentes de un
@@ -76,12 +88,13 @@ async function buildDraft(idPaciente, pago, lineas) {
       dueDate: hoy,
       termRef: process.env.QBO_SALES_TERM_ID || null,
       customerMemo: pago.numero_referencia ?? '',
+      taxCodeRef: TAX_CODE_ID,
     },
     // Datos del deposito/pago que se registra al mismo tiempo que la factura.
     deposito: {
       monto: pago.monto_pago,
       metodoPagoRef: PAYMENT_METHOD_IDS[pago.medio_pago] ?? null,
-      depositarEnRef: process.env.QBO_DEPOSIT_ACCOUNT_ID || null,
+      depositarEnRef: DEPOSIT_ACCOUNT_IDS[pago.medio_pago] ?? process.env.QBO_DEPOSIT_ACCOUNT_ID ?? null,
       // Referencia del deposito = boleta de Dentalink (folio), no el usuario que recibio el pago.
       numeroReferencia: String(docNumber),
     },
@@ -110,16 +123,15 @@ export function invoicePayloadFromDraft(draft) {
         ItemRef: { value: l.qbItemId },
         Qty: l.cantidad ?? 1,
         UnitPrice: l.precio,
+        ...(f.taxCodeRef ? { TaxCodeRef: { value: String(f.taxCodeRef) } } : {}),
       },
     })),
   };
   if (f.dueDate) payload.DueDate = f.dueDate;
   if (f.customerMemo) payload.CustomerMemo = { value: f.customerMemo };
   if (f.termRef) payload.SalesTermRef = { value: String(f.termRef) };
-  // No se envia TxnTaxDetail: cada Item en QuickBooks ya trae su propio
-  // SalesTaxCodeRef configurado (Exempt/0% en este caso), y forzarlo aqui
-  // chocaba con el calculo automatico de impuestos causando el error
-  // "asegurate de que todas las transacciones tengan una tasa impositiva".
+  if (f.taxCodeRef) payload.TxnTaxDetail = { TxnTaxCodeRef: { value: String(f.taxCodeRef) } };
+  if (draft.pago.folioBoleta) payload.PaymentRefNum = String(draft.pago.folioBoleta);
   return payload;
 }
 
