@@ -1,5 +1,5 @@
 import { getAllCustomers } from '../integrations/quickbooks.js';
-import { clearCustomerIndex, upsertCustomerIndex, findQbCustomer } from '../db/store.js';
+import { clearCustomerIndex, upsertCustomerIndexBulk, findQbCustomer } from '../db/store.js';
 
 /** El ID de paciente de Dentalink vive en el campo real "Suffix" del Customer en QuickBooks. */
 export function extractDentalinkId(customer) {
@@ -11,15 +11,19 @@ export function extractDentalinkId(customer) {
 export async function refreshCustomerIndex() {
   const customers = await getAllCustomers();
   await clearCustomerIndex();
-  let indexed = 0;
+
+  // Map para deduplicar por id_dentalink (Postgres no acepta dos filas con la
+  // misma clave en un solo upsert); si hay colision, se queda con la ultima.
+  const porId = new Map();
   for (const customer of customers) {
     const idDentalink = extractDentalinkId(customer);
     if (idDentalink) {
-      await upsertCustomerIndex(idDentalink, customer.Id, customer.DisplayName);
-      indexed += 1;
+      porId.set(idDentalink, { idDentalink, qbCustomerId: customer.Id, qbDisplayName: customer.DisplayName });
     }
   }
-  return { total: customers.length, indexed };
+
+  await upsertCustomerIndexBulk([...porId.values()]);
+  return { total: customers.length, indexed: porId.size };
 }
 
 /** Devuelve { qbCustomerId, qbDisplayName } o null si el paciente no matchea con ningun Customer. */

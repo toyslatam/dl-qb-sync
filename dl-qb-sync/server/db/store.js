@@ -21,6 +21,21 @@ export async function upsertCustomerIndex(idDentalink, qbCustomerId, qbDisplayNa
   assertOk(error, 'upsertCustomerIndex');
 }
 
+/** Version en lote de upsertCustomerIndex: un solo viaje de red en vez de uno por cliente. */
+export async function upsertCustomerIndexBulk(rows) {
+  if (rows.length === 0) return;
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('customer_index').upsert(
+    rows.map((r) => ({
+      id_dentalink: String(r.idDentalink),
+      qb_customer_id: r.qbCustomerId,
+      qb_display_name: r.qbDisplayName,
+      updated_at: now,
+    }))
+  );
+  assertOk(error, 'upsertCustomerIndexBulk');
+}
+
 export async function findQbCustomer(idDentalink) {
   const { data, error } = await supabase
     .from('customer_index')
@@ -39,6 +54,21 @@ export async function upsertItemIndex(prestacionKey, qbItemId, qbItemName) {
     updated_at: new Date().toISOString(),
   });
   assertOk(error, 'upsertItemIndex');
+}
+
+/** Version en lote de upsertItemIndex: un solo viaje de red en vez de uno por item. */
+export async function upsertItemIndexBulk(rows) {
+  if (rows.length === 0) return;
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('item_index').upsert(
+    rows.map((r) => ({
+      prestacion_key: r.prestacionKey,
+      qb_item_id: r.qbItemId,
+      qb_item_name: r.qbItemName,
+      updated_at: now,
+    }))
+  );
+  assertOk(error, 'upsertItemIndexBulk');
 }
 
 export async function findQbItemId(prestacionKey) {

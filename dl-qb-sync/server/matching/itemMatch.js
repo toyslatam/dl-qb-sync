@@ -1,5 +1,5 @@
 import { getAllItems } from '../integrations/quickbooks.js';
-import { clearItemIndex, upsertItemIndex, findQbItemId } from '../db/store.js';
+import { clearItemIndex, upsertItemIndexBulk, findQbItemId } from '../db/store.js';
 
 /** Normaliza nombre/codigo para matchear sin importar tildes, mayusculas o espacios extra. */
 export function normalizeKey(value) {
@@ -15,17 +15,22 @@ export function normalizeKey(value) {
 export async function refreshItemIndex() {
   const items = await getAllItems();
   await clearItemIndex();
+
+  // Map para deduplicar por prestacion_key (Postgres no acepta dos filas con
+  // la misma clave en un solo upsert); si hay colision, se queda con la ultima.
+  const porClave = new Map();
   let indexed = 0;
   for (const item of items) {
     if (item.Type !== 'Service' && item.Type !== 'NonInventory') continue;
-    const key = normalizeKey(item.Name);
-    await upsertItemIndex(key, item.Id, item.Name);
+    porClave.set(normalizeKey(item.Name), { prestacionKey: normalizeKey(item.Name), qbItemId: item.Id, qbItemName: item.Name });
     // Tambien indexar por Sku/codigo si existe, para matchear por codigo de prestacion.
     if (item.Sku) {
-      await upsertItemIndex(normalizeKey(item.Sku), item.Id, item.Name);
+      porClave.set(normalizeKey(item.Sku), { prestacionKey: normalizeKey(item.Sku), qbItemId: item.Id, qbItemName: item.Name });
     }
     indexed += 1;
   }
+
+  await upsertItemIndexBulk([...porClave.values()]);
   return { total: items.length, indexed };
 }
 
