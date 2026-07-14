@@ -133,9 +133,11 @@ export function invoicePayloadFromDraft(draft) {
   if (f.taxCodeRef) payload.TxnTaxDetail = { TxnTaxCodeRef: { value: String(f.taxCodeRef) } };
   if (draft.pago.folioBoleta) payload.PaymentRefNum = String(draft.pago.folioBoleta);
   // Requerido por QuickBooks para empresas fuera de EE.UU. (segun documentacion
-  // de Intuit): indica que la transaccion esta fuera del alcance del calculo
-  // automatico de impuestos, en vez de dejar que AST intente calcular una tasa.
-  payload.GlobalTaxCalculation = 'NotApplicable';
+  // de Intuit). TaxExcluded (en vez de NotApplicable) hace que SI se muestre
+  // la linea de impuesto en la factura (en 0%, via el TaxCodeRef Exempt), en
+  // vez de omitir la seccion de impuesto por completo -- necesario para que
+  // la factura muestre el ITBMS explicito para efectos fiscales/DGI.
+  payload.GlobalTaxCalculation = 'TaxExcluded';
   return payload;
 }
 
