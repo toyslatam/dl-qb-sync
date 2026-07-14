@@ -136,7 +136,7 @@ async function qboFetch(path, { method = 'GET', body } = {}) {
   return res.json();
 }
 
-function qboQuery(query) {
+export function qboQuery(query) {
   return qboFetch(`/query?query=${encodeURIComponent(query)}&minorversion=65`);
 }
 

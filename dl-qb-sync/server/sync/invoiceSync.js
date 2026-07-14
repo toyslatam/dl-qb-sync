@@ -76,7 +76,6 @@ async function buildDraft(idPaciente, pago, lineas) {
       dueDate: hoy,
       termRef: process.env.QBO_SALES_TERM_ID || null,
       customerMemo: pago.numero_referencia ?? '',
-      taxCodeRef: process.env.QBO_TAX_CODE_ID || null,
     },
     // Datos del deposito/pago que se registra al mismo tiempo que la factura.
     deposito: {
@@ -111,16 +110,16 @@ export function invoicePayloadFromDraft(draft) {
         ItemRef: { value: l.qbItemId },
         Qty: l.cantidad ?? 1,
         UnitPrice: l.precio,
-        // QBO exige la tasa de impuesto por linea (no basta a nivel factura)
-        // cuando la cuenta tiene "Automated Sales Tax" activo.
-        ...(f.taxCodeRef ? { TaxCodeRef: { value: String(f.taxCodeRef) } } : {}),
       },
     })),
   };
   if (f.dueDate) payload.DueDate = f.dueDate;
   if (f.customerMemo) payload.CustomerMemo = { value: f.customerMemo };
   if (f.termRef) payload.SalesTermRef = { value: String(f.termRef) };
-  if (f.taxCodeRef) payload.TxnTaxDetail = { TxnTaxCodeRef: { value: String(f.taxCodeRef) } };
+  // No se envia TxnTaxDetail: cada Item en QuickBooks ya trae su propio
+  // SalesTaxCodeRef configurado (Exempt/0% en este caso), y forzarlo aqui
+  // chocaba con el calculo automatico de impuestos causando el error
+  // "asegurate de que todas las transacciones tengan una tasa impositiva".
   return payload;
 }
 

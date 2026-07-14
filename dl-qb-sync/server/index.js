@@ -274,6 +274,10 @@ app.post('/api/review-queue/:idPago/lineas/:idDetalle/crear-item', async (req, r
       Name: nombreItem,
       Type: 'Service',
       IncomeAccountRef: { value: cuentas[0].Id, name: cuentas[0].Name },
+      // Todos los items que crea la app quedan exentos (0%) por defecto,
+      // igual que el resto de las prestaciones dentales ya configuradas.
+      Taxable: false,
+      SalesTaxCodeRef: { value: process.env.QBO_TAX_CODE_ID || '7' },
     });
 
     linea.qbItemId = created.Item.Id;
