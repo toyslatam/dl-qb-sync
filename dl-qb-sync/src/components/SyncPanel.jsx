@@ -78,17 +78,11 @@ export default function SyncPanel({ onSynced }) {
           <table className="data-table" style={{ minWidth: 'auto' }}>
             <tbody>
               <tr>
-                <td>Facturas creadas</td>
-                <td>
-                  <span className="badge badge-success">{result.creadas}</span>
-                </td>
-              </tr>
-              <tr>
                 <td>Ya sincronizadas (omitidas)</td>
                 <td>{result.yaSincronizadas}</td>
               </tr>
               <tr>
-                <td>En cola de revisión</td>
+                <td>En cola de revisión (ninguna se crea sola)</td>
                 <td>
                   <span className="badge badge-warning">{result.enCola}</span>
                 </td>

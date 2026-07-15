@@ -153,17 +153,18 @@ export function invoicePayloadFromDraft(draft) {
 
 /**
  * Corre un ciclo de sincronizacion sobre un rango de fechas de pagos.
- * Refresca los indices de QuickBooks, arma un borrador de factura por cada
- * pago no sincronizado y crea directamente en QuickBooks los que ya matchean
- * 100% (cliente + todas las lineas); el resto queda en review_queue para
- * completar/editar manualmente desde la web.
+ * Refresca los indices de QuickBooks y arma un borrador de factura por cada
+ * pago no sincronizado, dejandolo siempre en review_queue. La creacion en
+ * QuickBooks NUNCA es automatica -- un humano debe confirmarla explicitamente
+ * desde la web (aunque cliente y prestaciones ya matcheen 100%), para que no
+ * se dispare una factura sin que nadie la revise primero.
  */
 export async function runSyncCycle({ fechaDesde, fechaHasta } = {}) {
   const customerStats = await refreshCustomerIndex();
   const itemStats = await refreshItemIndex();
 
   const pagos = await getPagos({ fechaDesde, fechaHasta });
-  const result = { creadas: 0, enCola: 0, yaSincronizadas: 0, customerStats, itemStats };
+  const result = { enCola: 0, yaSincronizadas: 0, customerStats, itemStats };
 
   for (const pago of pagos) {
     if (await isInvoiceSynced(pago.id)) {
@@ -173,27 +174,20 @@ export async function runSyncCycle({ fechaDesde, fechaHasta } = {}) {
 
     const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
     const draft = await buildDraft(pago.id_paciente, pago, lineas);
-
-    if (isDraftReady(draft)) {
-      const created = await createInvoice(invoicePayloadFromDraft(draft));
-      await markInvoiceSynced(pago.id, created.Invoice.Id);
-      result.creadas += 1;
-    } else {
-      await upsertDraft(pago.id, pago.id_paciente, draft);
-      result.enCola += 1;
-    }
+    await upsertDraft(pago.id, pago.id_paciente, draft);
+    result.enCola += 1;
   }
 
   return result;
 }
 
-/** Corre el mismo flujo pero para un solo paciente (modo de prueba). */
+/** Corre el mismo flujo pero para un solo paciente (modo de prueba). Tampoco crea nada automaticamente. */
 export async function runSyncForPaciente(idPaciente) {
   await refreshCustomerIndex();
   await refreshItemIndex();
 
   const pagos = await getPagosByPaciente(idPaciente);
-  const result = { creadas: 0, enCola: 0, yaSincronizadas: 0 };
+  const result = { enCola: 0, yaSincronizadas: 0 };
 
   for (const pago of pagos) {
     if (await isInvoiceSynced(pago.id)) {
@@ -202,15 +196,8 @@ export async function runSyncForPaciente(idPaciente) {
     }
     const lineas = await getLineasCandidatas(idPaciente, pago.fecha_recepcion);
     const draft = await buildDraft(idPaciente, pago, lineas);
-
-    if (isDraftReady(draft)) {
-      const created = await createInvoice(invoicePayloadFromDraft(draft));
-      await markInvoiceSynced(pago.id, created.Invoice.Id);
-      result.creadas += 1;
-    } else {
-      await upsertDraft(pago.id, idPaciente, draft);
-      result.enCola += 1;
-    }
+    await upsertDraft(pago.id, idPaciente, draft);
+    result.enCola += 1;
   }
 
   return result;
@@ -246,7 +233,14 @@ export async function listarPagosDelDia({ fechaDesde, fechaHasta } = {}) {
   return resultado;
 }
 
-/** Trae/actualiza el detalle completo de un pago puntual y lo deja listo o en la cola de revision. */
+/**
+ * Trae/actualiza el detalle completo de un pago puntual y SIEMPRE lo deja en
+ * la cola de revision -- nunca crea la factura automaticamente, aunque el
+ * cliente y todas las prestaciones ya matcheen limpio. La creacion real solo
+ * ocurre cuando un humano confirma explicitamente desde la cola de revision
+ * (createInvoiceFromQueue), para evitar facturas disparadas por error al
+ * simplemente traer el detalle de un pago.
+ */
 export async function procesarPagoIndividual(idPago) {
   const pago = await getPagoPorId(idPago);
   if (!pago) throw new Error(`Pago ${idPago} no encontrado en Dentalink`);
@@ -257,12 +251,6 @@ export async function procesarPagoIndividual(idPago) {
 
   const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
   const draft = await buildDraft(pago.id_paciente, pago, lineas);
-
-  if (isDraftReady(draft)) {
-    const created = await createInvoice(invoicePayloadFromDraft(draft));
-    await markInvoiceSynced(pago.id, created.Invoice.Id);
-    return { creada: true, invoice: created };
-  }
 
   await upsertDraft(pago.id, pago.id_paciente, draft);
   return { creada: false };
