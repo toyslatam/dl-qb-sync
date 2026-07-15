@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
+import { RefreshCcw, LogOut, X } from 'lucide-react';
 import { supabase } from './lib/supabaseClient.js';
 import { apiFetch } from './lib/api.js';
 import Login from './components/Login.jsx';
+import FacturacionInbox from './components/FacturacionInbox.jsx';
 import SyncPanel from './components/SyncPanel.jsx';
-import PagosDelDia from './components/PagosDelDia.jsx';
-import ReviewQueue from './components/ReviewQueue.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = cargando, null = sin sesion
   const [health, setHealth] = useState(null);
-  const [reviewQueueVersion, setReviewQueueVersion] = useState(0);
+  const [showSync, setShowSync] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -31,29 +31,54 @@ export default function App() {
   if (!session) return <Login />;
 
   return (
-    <div className="app-shell">
-      <div className="app-header">
-        <h1>Dentalink → QuickBooks</h1>
-        <div className="user-chip">
-          <span>{session.user.email}</span>
-          <button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
+    <div className="min-h-screen bg-bg px-4 py-5 sm:px-6">
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Dentalink → QuickBooks</h1>
+          {health && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ${
+                health.ok ? 'bg-success-light text-success' : 'bg-danger-light text-danger'
+              }`}
+            >
+              {health.ok ? 'API conectada' : 'Sin conexión'}
+            </span>
+          )}
         </div>
-      </div>
-      <p>
-        API:{' '}
-        {health === null ? (
-          'verificando…'
-        ) : health.ok ? (
-          <span className="badge badge-success">conectada</span>
-        ) : (
-          <span className="badge" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
-            sin conexión
-          </span>
-        )}
-      </p>
-      <PagosDelDia onTraido={() => setReviewQueueVersion((v) => v + 1)} />
-      <SyncPanel onSynced={() => setReviewQueueVersion((v) => v + 1)} />
-      <ReviewQueue refreshTrigger={reviewQueueVersion} />
+        <div className="flex items-center gap-3 text-sm text-slate-500">
+          <button
+            onClick={() => setShowSync(true)}
+            title="Sincronización manual por rango de fechas"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-primary hover:text-primary"
+          >
+            <RefreshCcw size={14} />
+            Sincronizar por rango
+          </button>
+          <span className="hidden sm:inline">{session.user.email}</span>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-danger hover:text-danger"
+          >
+            <LogOut size={14} />
+            Salir
+          </button>
+        </div>
+      </header>
+
+      <FacturacionInbox />
+
+      {showSync && (
+        <div className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-6" onClick={() => setShowSync(false)}>
+          <div className="mt-10 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex justify-end">
+              <button onClick={() => setShowSync(false)} className="rounded-full bg-white p-1.5 text-slate-500 shadow-card hover:text-slate-800">
+                <X size={16} />
+              </button>
+            </div>
+            <SyncPanel onSynced={() => setShowSync(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
