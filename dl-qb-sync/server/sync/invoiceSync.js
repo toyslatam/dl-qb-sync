@@ -28,15 +28,25 @@ const TAX_CODE_ID = process.env.QBO_TAX_CODE_ID || '7';
 /**
  * Junta las lineas (prestaciones) de todos los tratamientos vigentes de un
  * paciente. Como el vinculo exacto pago -> detalle no esta confirmado en la
- * documentacion, se listan todas las prestaciones de sus tratamientos y el
- * humano confirma/edita cuales corresponden a este pago desde la cola de
- * revision antes de crear la factura.
+ * documentacion, se listan las prestaciones de sus tratamientos y el humano
+ * confirma/edita cuales corresponden a este pago desde la cola de revision
+ * antes de crear la factura.
+ *
+ * Replica el mismo filtro que el flujo de Power Automate ya en uso: solo
+ * detalles realizados el mismo dia del pago (fecha_realizacion), y se
+ * descartan los de total 0 (ya cubiertos/descontados), para no meter en la
+ * factura prestaciones de otras visitas o lineas sin monto real.
  */
-async function getLineasCandidatas(idPaciente) {
+async function getLineasCandidatas(idPaciente, fechaPago) {
   const tratamientos = await getTratamientosByPaciente(idPaciente);
   const lineas = [];
   for (const tratamiento of tratamientos) {
-    const detalles = await getDetalleTratamiento(tratamiento.id);
+    const todosDetalles = await getDetalleTratamiento(tratamiento.id);
+    const detalles = todosDetalles.filter((d) => {
+      if (Number(d.total) === 0) return false;
+      if (fechaPago && d.fecha_realizacion) return d.fecha_realizacion.slice(0, 10) === fechaPago.slice(0, 10);
+      return true;
+    });
     for (const detalle of detalles) {
       const nombre = detalle.nombre_prestacion ?? detalle.nombre ?? null;
       const codigo = detalle.codigo_prestacion ?? detalle.codigo ?? null;
@@ -161,7 +171,7 @@ export async function runSyncCycle({ fechaDesde, fechaHasta } = {}) {
       continue;
     }
 
-    const lineas = await getLineasCandidatas(pago.id_paciente);
+    const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
     const draft = await buildDraft(pago.id_paciente, pago, lineas);
 
     if (isDraftReady(draft)) {
@@ -190,7 +200,7 @@ export async function runSyncForPaciente(idPaciente) {
       result.yaSincronizadas += 1;
       continue;
     }
-    const lineas = await getLineasCandidatas(idPaciente);
+    const lineas = await getLineasCandidatas(idPaciente, pago.fecha_recepcion);
     const draft = await buildDraft(idPaciente, pago, lineas);
 
     if (isDraftReady(draft)) {
@@ -245,7 +255,7 @@ export async function procesarPagoIndividual(idPago) {
   await refreshCustomerIndex();
   await refreshItemIndex();
 
-  const lineas = await getLineasCandidatas(pago.id_paciente);
+  const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
   const draft = await buildDraft(pago.id_paciente, pago, lineas);
 
   if (isDraftReady(draft)) {

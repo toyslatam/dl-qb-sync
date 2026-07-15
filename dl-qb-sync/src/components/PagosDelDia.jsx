@@ -7,8 +7,12 @@ const ESTADO_BADGE = {
   pendiente: { label: 'pendiente', className: 'badge-pending' },
 };
 
+/** Fecha de hoy en la zona horaria local del navegador (no UTC: toISOString() se adelanta
+ * un dia despues de las 7pm en Panama/Colombia, que estan en UTC-5). */
 function hoy() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const offsetMs = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
 export default function PagosDelDia({ onTraido }) {

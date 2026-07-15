@@ -6,13 +6,24 @@ export default function SearchPicker({ endpoint, labelKey, onPick, placeholder }
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function search() {
     if (!query.trim()) return;
     setLoading(true);
+    setError('');
     try {
       const res = await apiFetch(`${endpoint}?q=${encodeURIComponent(query)}`);
-      setResults(await res.json());
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error || `Error ${res.status} al buscar`);
+        setResults([]);
+        return;
+      }
+      setResults(Array.isArray(body) ? body : []);
+    } catch (err) {
+      setError(err.message || 'Error de red al buscar');
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -32,6 +43,9 @@ export default function SearchPicker({ endpoint, labelKey, onPick, placeholder }
           {loading ? '…' : 'Buscar'}
         </button>
       </div>
+      {error && (
+        <div style={{ color: 'var(--color-danger, #c0392b)', fontSize: '0.8rem', marginTop: '0.25rem' }}>{error}</div>
+      )}
       {results.length > 0 && (
         <ul
           className="card"
