@@ -25,6 +25,7 @@ export default function DraftRow({ row, onChange }) {
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
   const idPago = row.id_pago;
   const lista = draft.lineas.length > 0 && draft.lineas.every((l) => l.estado === 'matched') && draft.customerMatch;
@@ -131,7 +132,7 @@ export default function DraftRow({ row, onChange }) {
     );
   }
 
-  async function crearFactura() {
+  async function crearFacturaConfirmada() {
     setBusy(true);
     setError(null);
     try {
@@ -144,6 +145,7 @@ export default function DraftRow({ row, onChange }) {
       setError(err.message);
     } finally {
       setBusy(false);
+      setConfirmando(false);
     }
   }
 
@@ -363,9 +365,38 @@ export default function DraftRow({ row, onChange }) {
         )}
       </div>
 
-      <button className="btn-primary" onClick={crearFactura} disabled={!lista || busy} style={{ marginTop: 'var(--space-2)' }}>
-        {busy ? 'Creando…' : registrarPago ? 'Crear factura y registrar pago' : 'Crear factura en QuickBooks'}
-      </button>
+      {!confirmando ? (
+        <button
+          className="btn-primary"
+          onClick={() => setConfirmando(true)}
+          disabled={!lista || busy}
+          style={{ marginTop: 'var(--space-2)' }}
+        >
+          {registrarPago ? 'Crear factura y registrar pago' : 'Crear factura en QuickBooks'}
+        </button>
+      ) : (
+        <div
+          className="preview-box"
+          style={{ marginTop: 'var(--space-2)', borderLeftColor: 'var(--color-warning)', background: 'var(--color-warning-bg)' }}
+        >
+          <p style={{ margin: 0, fontWeight: 600 }}>
+            Vas a crear en QuickBooks una factura de <strong>${totalFactura.toFixed(2)}</strong> a nombre de{' '}
+            <strong>{draft.customerMatch?.qbDisplayName || `cliente ${draft.customerMatch?.qbCustomerId}`}</strong>
+            {registrarPago ? ' y se registrará el pago de inmediato.' : '.'}
+          </p>
+          <p style={{ margin: '0.35rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+            Revisa que el monto coincida con el pago (${draft.pago.monto}) antes de confirmar. Esta acción no se puede deshacer desde la app.
+          </p>
+          <div className="row" style={{ marginTop: 'var(--space-2)' }}>
+            <button className="btn-primary" onClick={crearFacturaConfirmada} disabled={busy}>
+              {busy ? 'Creando en QuickBooks…' : `Sí, crear factura por $${totalFactura.toFixed(2)}`}
+            </button>
+            <button onClick={() => setConfirmando(false)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
