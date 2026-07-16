@@ -226,10 +226,23 @@ function escapeQboLiteral(value) {
   return String(value).replace(/'/g, "\\'");
 }
 
+/**
+ * Arma "campo LIKE '%palabra1%' AND campo LIKE '%palabra2%' AND ..." a partir
+ * de las palabras del texto buscado. Un LIKE de la frase completa exige que
+ * el espaciado y el orden sean exactos, y QuickBooks a veces guarda nombres
+ * con espacios dobles (ej. "Alejandro Isaac  Toledano Clement", al juntar
+ * GivenName + FamilyName) -- eso rompia la busqueda aunque el cliente
+ * existiera. Buscando palabra por palabra tolera espacios extra y orden distinto.
+ */
+function likeTodasLasPalabras(campo, texto) {
+  const palabras = texto.trim().split(/\s+/).filter(Boolean);
+  return palabras.map((p) => `${campo} LIKE '%${escapeQboLiteral(p)}%'`).join(' AND ');
+}
+
 /** Busca Customers activos por nombre (para asignar manualmente desde la cola de revision). */
 export async function searchCustomers(nameFragment) {
   const result = await qboQuery(
-    `select * from Customer where Active = true and DisplayName LIKE '%${escapeQboLiteral(nameFragment)}%' MAXRESULTS 20`
+    `select * from Customer where Active = true and ${likeTodasLasPalabras('DisplayName', nameFragment)} MAXRESULTS 20`
   );
   return result.QueryResponse?.Customer ?? [];
 }
@@ -237,7 +250,7 @@ export async function searchCustomers(nameFragment) {
 /** Busca Items activos por nombre (para asignar manualmente desde la cola de revision). */
 export async function searchItems(nameFragment) {
   const result = await qboQuery(
-    `select * from Item where Active = true and Name LIKE '%${escapeQboLiteral(nameFragment)}%' MAXRESULTS 20`
+    `select * from Item where Active = true and ${likeTodasLasPalabras('Name', nameFragment)} MAXRESULTS 20`
   );
   return result.QueryResponse?.Item ?? [];
 }
