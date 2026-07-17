@@ -14,16 +14,33 @@ const PAYMENT_METHOD_IDS = {
   'Tarjeta de crédito (Visa o MasterCard) a distancia': '1000000021',
 };
 
+// Cuenta de deposito por defecto segun el medio de pago (pedido explicito del
+// cliente): tarjeta de credito y clave -> BAC, ACH y enlace de pago -> Banco
+// General, efectivo -> Fondo sin Depositar. IDs reales de QuickBooks.
+const BAC = '1150040001';
+const BANCO_GENERAL = '1150040000';
+const FONDO_SIN_DEPOSITAR = '1150040003';
+
 const DEPOSIT_ACCOUNT_IDS = {
-  Efectivo: '85',
-  'Tarjeta de crédito (Visa o Master Card)': '196',
-  'Transferencia electrónica (ACH)': '91',
-  'Yappy - Banco General': '91',
-  'Tarjeta de débito (Clave)': '196',
-  'Tarjeta de crédito (Visa o MasterCard) a distancia': '91',
+  Efectivo: FONDO_SIN_DEPOSITAR,
+  'Tarjeta de crédito (Visa o Master Card)': BAC,
+  'Tarjeta de débito (Clave)': BAC,
+  'Transferencia electrónica (ACH)': BANCO_GENERAL,
+  'Yappy - Banco General': BANCO_GENERAL,
+  // "Enlace" de pago = cobro a distancia por link.
+  'Tarjeta de crédito (Visa o MasterCard) a distancia': BANCO_GENERAL,
 };
 
+// Termino de venta por defecto: Due on receipt (Id real en QuickBooks).
+const DEFAULT_TERM_ID = '2';
+
 const TAX_CODE_ID = process.env.QBO_TAX_CODE_ID || '7';
+
+/** Fecha de hoy en hora de Panama (UTC-5 fijo, sin horario de verano), sin importar la zona horaria del servidor. */
+function hoyPanama() {
+  const PANAMA_OFFSET_MS = -5 * 60 * 60 * 1000;
+  return new Date(Date.now() + PANAMA_OFFSET_MS).toISOString().slice(0, 10);
+}
 
 /**
  * Junta las lineas (prestaciones) de todos los tratamientos vigentes de un
@@ -74,9 +91,9 @@ async function getLineasCandidatas(idPaciente, fechaPago) {
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await matchCustomer(idPaciente);
   const docNumber = pago.folio ?? pago.id;
-  // La factura se registra el dia que se crea en QuickBooks, no el dia
-  // historico del pago en Dentalink (que puede ser mucho mas antiguo).
-  const hoy = new Date().toISOString().slice(0, 10);
+  // La factura se registra el dia que se crea en QuickBooks (hora de Panama),
+  // no el dia historico del pago en Dentalink (que puede ser mucho mas antiguo).
+  const hoy = hoyPanama();
 
   return {
     idPaciente: String(idPaciente),
@@ -96,7 +113,7 @@ async function buildDraft(idPaciente, pago, lineas) {
       trackingNum: docNumber,
       txnDate: hoy,
       dueDate: hoy,
-      termRef: process.env.QBO_SALES_TERM_ID || null,
+      termRef: process.env.QBO_SALES_TERM_ID || DEFAULT_TERM_ID,
       customerMemo: pago.numero_referencia ?? '',
       taxCodeRef: TAX_CODE_ID,
     },
