@@ -90,7 +90,11 @@ async function getLineasCandidatas(idPaciente, fechaPago) {
 
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await matchCustomer(idPaciente);
-  const docNumber = pago.folio ?? pago.id;
+  // N. de factura = numero de pago de Dentalink (pedido explicito del cliente).
+  // El resto (tracking number, referencia del deposito) sigue usando la
+  // boleta/folio, como siempre.
+  const docNumber = pago.id;
+  const boleta = pago.folio ?? pago.id;
   // La factura se registra el dia que se crea en QuickBooks (hora de Panama),
   // no el dia historico del pago en Dentalink (que puede ser mucho mas antiguo).
   const hoy = hoyPanama();
@@ -110,7 +114,7 @@ async function buildDraft(idPaciente, pago, lineas) {
     // Datos de encabezado de la factura, editables antes de crearla.
     factura: {
       docNumber,
-      trackingNum: docNumber,
+      trackingNum: boleta,
       txnDate: hoy,
       dueDate: hoy,
       termRef: process.env.QBO_SALES_TERM_ID || DEFAULT_TERM_ID,
@@ -123,7 +127,7 @@ async function buildDraft(idPaciente, pago, lineas) {
       metodoPagoRef: PAYMENT_METHOD_IDS[pago.medio_pago] ?? null,
       depositarEnRef: DEPOSIT_ACCOUNT_IDS[pago.medio_pago] ?? process.env.QBO_DEPOSIT_ACCOUNT_ID ?? null,
       // Referencia del deposito = boleta de Dentalink (folio), no el usuario que recibio el pago.
-      numeroReferencia: String(docNumber),
+      numeroReferencia: String(boleta),
     },
   };
 }
