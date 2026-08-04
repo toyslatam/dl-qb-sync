@@ -82,10 +82,32 @@ async function getLineasCandidatas(idPaciente, fechaPago) {
         qbItemId: qbItemId ?? null,
         qbItemName: null,
         estado: !nombre ? 'necesita_item' : precio === null ? 'necesita_precio' : qbItemId ? 'matched' : 'necesita_item',
+        // Dentista que realizo la prestacion en Dentalink -- solo se usa
+        // para sugerir un doctor por defecto en la factura (modulo de
+        // Comisiones); el usuario siempre puede cambiarlo antes de crear.
+        dentistaRealizador: detalle.dentista_realizador ?? null,
       });
     }
   }
   return lineas;
+}
+
+/** El doctor que mas se repite entre las lineas, como sugerencia inicial (el usuario siempre puede cambiarlo). */
+function doctorMasFrecuente(lineas) {
+  const conteo = new Map();
+  for (const l of lineas) {
+    if (!l.dentistaRealizador) continue;
+    conteo.set(l.dentistaRealizador, (conteo.get(l.dentistaRealizador) ?? 0) + 1);
+  }
+  let mejor = null;
+  let mejorConteo = 0;
+  for (const [nombre, veces] of conteo) {
+    if (veces > mejorConteo) {
+      mejor = nombre;
+      mejorConteo = veces;
+    }
+  }
+  return mejor;
 }
 
 async function buildDraft(idPaciente, pago, lineas) {
@@ -118,7 +140,10 @@ async function buildDraft(idPaciente, pago, lineas) {
       txnDate: hoy,
       dueDate: hoy,
       termRef: process.env.QBO_SALES_TERM_ID || DEFAULT_TERM_ID,
-      customerMemo: pago.numero_referencia ?? '',
+      // Nota para cliente = nombre del doctor (asi lo lee el modulo de
+      // Comisiones). Se sugiere el dentista que mas se repite entre las
+      // lineas de Dentalink; el usuario confirma o cambia antes de crear.
+      customerMemo: doctorMasFrecuente(lineas) ?? '',
       taxCodeRef: TAX_CODE_ID,
     },
     // Datos del deposito/pago que se registra al mismo tiempo que la factura.

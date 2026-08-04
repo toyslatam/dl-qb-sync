@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import EntitySelect from './EntitySelect.jsx';
+import { apiFetch } from '../lib/api.js';
 
 function Field({ label, children }) {
   return (
@@ -14,6 +16,18 @@ const inputClass =
   'h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15';
 
 export default function InvoiceCard({ factura, deposito, totalFactura, onChange, onChangeDeposito }) {
+  const [doctores, setDoctores] = useState([]);
+
+  useEffect(() => {
+    apiFetch('/api/doctores')
+      .then((res) => res.json())
+      .then(setDoctores)
+      .catch(() => setDoctores([]));
+  }, []);
+
+  const memo = factura?.customerMemo ?? '';
+  const doctorConocido = doctores.some((d) => `${d.nombre} ${d.apellido}`.toLowerCase() === memo.trim().toLowerCase());
+
   return (
     <Card>
       <CardHeader>
@@ -52,13 +66,26 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
           />
         </Field>
         <div className="sm:col-span-2">
-          <Field label="Nota para el cliente">
+          <Field label="Doctor (Nota para el cliente)">
             <input
-              value={factura?.customerMemo ?? ''}
+              list="doctores-catalogo"
+              value={memo}
               onChange={(e) => onChange('customerMemo', e.target.value)}
+              placeholder="Nombre y apellido del doctor, ej. Francisco SousaLennox"
               className={inputClass}
             />
+            <datalist id="doctores-catalogo">
+              {doctores.map((d) => (
+                <option key={d.id} value={`${d.nombre} ${d.apellido}`} />
+              ))}
+            </datalist>
           </Field>
+          {memo && !doctorConocido && (
+            <p className="mt-1 text-[0.78rem] text-warning">
+              Este nombre no está en el catálogo de Doctores — el reporte de Comisiones no lo va a poder identificar hasta
+              que lo agregues ahí (o corrijas el nombre para que coincida exacto).
+            </p>
+          )}
         </div>
 
         <div className="sm:col-span-2 mt-1 rounded-xl bg-slate-50 p-3.5">
