@@ -23,6 +23,8 @@ import {
   createDoctor,
   updateDoctor,
   deleteDoctor,
+  getMetodosPagoDescuento,
+  upsertMetodoPagoDescuento,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
@@ -514,6 +516,27 @@ app.delete('/api/doctores/:id', async (req, res) => {
   try {
     await deleteDoctor(req.params.id);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Tabla Master: % descuento por medio de pago (modulo de Comisiones) ---
+app.get('/api/master/metodos-pago', async (_req, res) => {
+  try {
+    res.json(await getMetodosPagoDescuento());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/master/metodos-pago', async (req, res) => {
+  try {
+    const { medioPago, porcentaje } = req.body ?? {};
+    if (!medioPago) return res.status(400).json({ error: 'medioPago requerido' });
+    res.json(await upsertMetodoPagoDescuento(medioPago, Number(porcentaje) || 0));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

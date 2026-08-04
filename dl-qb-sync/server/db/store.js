@@ -209,4 +209,22 @@ export async function deleteDoctor(id) {
   assertOk(error, 'deleteDoctor');
 }
 
+// --- Tabla Master: % de descuento por medio de pago (modulo de Comisiones) ---
+
+export async function getMetodosPagoDescuento() {
+  const { data, error } = await supabase.from('metodos_pago_descuento').select('*').order('medio_pago', { ascending: true });
+  assertOk(error, 'getMetodosPagoDescuento');
+  return data ?? [];
+}
+
+export async function upsertMetodoPagoDescuento(medioPago, porcentaje) {
+  const { data, error } = await supabase
+    .from('metodos_pago_descuento')
+    .upsert({ medio_pago: medioPago, porcentaje, updated_at: new Date().toISOString() })
+    .select()
+    .single();
+  assertOk(error, 'upsertMetodoPagoDescuento');
+  return data;
+}
+
 export default supabase;

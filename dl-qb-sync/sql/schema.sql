@@ -65,6 +65,24 @@ create table if not exists doctores (
   unique (nombre, apellido)
 );
 
+-- Tabla "Master" del Excel de comisiones: % de descuento por medio de pago,
+-- que se resta de la base antes de calcular la comision del doctor.
+create table if not exists metodos_pago_descuento (
+  medio_pago text primary key,
+  porcentaje numeric not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+insert into metodos_pago_descuento (medio_pago, porcentaje) values
+  ('Tarjeta de crédito (Visa o Master Card)', 0.027),
+  ('Depósito bancario', 0),
+  ('Efectivo', 0),
+  ('Tarjeta de crédito (Visa o MasterCard) a distancia', 0.027),
+  ('Tarjeta de débito (Clave)', 0.025),
+  ('Transferencia electrónica (ACH)', 0),
+  ('Yappy - Banco General', 0.02)
+on conflict (medio_pago) do nothing;
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -74,3 +92,4 @@ alter table synced_invoices enable row level security;
 alter table review_queue enable row level security;
 alter table oauth_tokens enable row level security;
 alter table doctores enable row level security;
+alter table metodos_pago_descuento enable row level security;
