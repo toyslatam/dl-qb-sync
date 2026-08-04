@@ -101,9 +101,6 @@ export default function ComisionesModule() {
           <span className="mr-2 inline-flex"><Calculator size={18} /></span>
           Comisiones
         </h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Lee directo de QuickBooks (facturas del rango) — no crea ni modifica nada allá.
-        </p>
       </div>
 
       <Card>
