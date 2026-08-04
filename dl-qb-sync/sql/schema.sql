@@ -41,6 +41,30 @@ create table if not exists oauth_tokens (
   updated_at timestamptz not null default now()
 );
 
+-- Catalogo de doctores para el modulo de Comisiones. Precargado desde la hoja
+-- "Tabla%" del Excel de comisiones (sin la columna de Laboratorios, que se
+-- calcula aparte desde las facturas de proveedor de la otra QuickBooks).
+-- nombre/apellido = EXACTAMENTE como aparece la "Nota para cliente" de la
+-- factura (sin titulo) -- es la clave para matchear la factura con el
+-- doctor, nunca se le antepone el titulo para no romper el match. titulo
+-- (Dr./Dra.) va aparte, solo para armar el nombre completo al mostrarlo en
+-- reportes (ej. titulo + ' ' + nombre + ' ' + apellido).
+create table if not exists doctores (
+  id bigint generated always as identity primary key,
+  titulo text not null default 'Dr.',
+  nombre text not null,
+  apellido text not null,
+  especialidad text,
+  usuario text,
+  comision_pct numeric not null default 0,
+  desc_tarjeta_credito numeric,
+  desc_tarjeta_clave numeric,
+  desc_yappy numeric,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (nombre, apellido)
+);
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -49,3 +73,4 @@ alter table item_index enable row level security;
 alter table synced_invoices enable row level security;
 alter table review_queue enable row level security;
 alter table oauth_tokens enable row level security;
+alter table doctores enable row level security;

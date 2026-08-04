@@ -167,4 +167,46 @@ export async function getSetting(key) {
   return data?.value ?? null;
 }
 
+// --- Catalogo de doctores (modulo de Comisiones) ---
+
+export async function getDoctores() {
+  const { data, error } = await supabase.from('doctores').select('*').order('apellido', { ascending: true });
+  assertOk(error, 'getDoctores');
+  return data ?? [];
+}
+
+/** Busca un doctor por nombre+apellido EXACTOS (como vienen en la Nota para cliente de la factura). */
+export async function findDoctorPorNombre(nombre, apellido) {
+  const { data, error } = await supabase
+    .from('doctores')
+    .select('*')
+    .eq('nombre', nombre)
+    .eq('apellido', apellido)
+    .maybeSingle();
+  assertOk(error, 'findDoctorPorNombre');
+  return data ?? null;
+}
+
+export async function createDoctor(doctor) {
+  const { data, error } = await supabase.from('doctores').insert(doctor).select().single();
+  assertOk(error, 'createDoctor');
+  return data;
+}
+
+export async function updateDoctor(id, cambios) {
+  const { data, error } = await supabase
+    .from('doctores')
+    .update({ ...cambios, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  assertOk(error, 'updateDoctor');
+  return data;
+}
+
+export async function deleteDoctor(id) {
+  const { error } = await supabase.from('doctores').delete().eq('id', id);
+  assertOk(error, 'deleteDoctor');
+}
+
 export default supabase;

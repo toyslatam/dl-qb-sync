@@ -19,6 +19,10 @@ import {
   upsertCustomerIndex,
   markInvoiceSynced,
   unmarkInvoiceSynced,
+  getDoctores,
+  createDoctor,
+  updateDoctor,
+  deleteDoctor,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
@@ -450,6 +454,66 @@ app.get('/api/qbo/metodos-pago', async (_req, res) => {
 app.get('/api/qbo/cuentas-deposito', async (_req, res) => {
   try {
     res.json(await getDepositAccounts());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Catalogo de doctores (modulo de Comisiones) ---
+app.get('/api/doctores', async (_req, res) => {
+  try {
+    res.json(await getDoctores());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/doctores', async (req, res) => {
+  try {
+    const { titulo, nombre, apellido, especialidad, usuario, comisionPct } = req.body ?? {};
+    if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido son requeridos' });
+    const doctor = await createDoctor({
+      titulo: titulo || 'Dr.',
+      nombre,
+      apellido,
+      especialidad: especialidad ?? null,
+      usuario: usuario ?? null,
+      comision_pct: comisionPct !== undefined ? Number(comisionPct) : 0,
+    });
+    res.json(doctor);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/doctores/:id', async (req, res) => {
+  try {
+    const { titulo, nombre, apellido, especialidad, usuario, comisionPct, descTarjetaCredito, descTarjetaClave, descYappy } =
+      req.body ?? {};
+    const cambios = {};
+    if (titulo !== undefined) cambios.titulo = titulo;
+    if (nombre !== undefined) cambios.nombre = nombre;
+    if (apellido !== undefined) cambios.apellido = apellido;
+    if (especialidad !== undefined) cambios.especialidad = especialidad;
+    if (usuario !== undefined) cambios.usuario = usuario;
+    if (comisionPct !== undefined) cambios.comision_pct = Number(comisionPct);
+    if (descTarjetaCredito !== undefined) cambios.desc_tarjeta_credito = descTarjetaCredito === '' ? null : Number(descTarjetaCredito);
+    if (descTarjetaClave !== undefined) cambios.desc_tarjeta_clave = descTarjetaClave === '' ? null : Number(descTarjetaClave);
+    if (descYappy !== undefined) cambios.desc_yappy = descYappy === '' ? null : Number(descYappy);
+    res.json(await updateDoctor(req.params.id, cambios));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/doctores/:id', async (req, res) => {
+  try {
+    await deleteDoctor(req.params.id);
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

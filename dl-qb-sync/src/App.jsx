@@ -5,11 +5,18 @@ import { apiFetch } from './lib/api.js';
 import Login from './components/Login.jsx';
 import FacturacionInbox from './components/FacturacionInbox.jsx';
 import SyncPanel from './components/SyncPanel.jsx';
+import DoctoresModule from './components/DoctoresModule.jsx';
+
+const MODULOS = [
+  { key: 'facturas', label: 'Facturas de Venta' },
+  { key: 'doctores', label: 'Doctores' },
+];
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = cargando, null = sin sesion
   const [health, setHealth] = useState(null);
   const [showSync, setShowSync] = useState(false);
+  const [modulo, setModulo] = useState('facturas');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -46,14 +53,16 @@ export default function App() {
           )}
         </div>
         <div className="flex items-center gap-3 text-sm text-slate-500">
-          <button
-            onClick={() => setShowSync(true)}
-            title="Sincronización manual por rango de fechas"
-            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-primary hover:text-primary"
-          >
-            <RefreshCcw size={14} />
-            Sincronizar por rango
-          </button>
+          {modulo === 'facturas' && (
+            <button
+              onClick={() => setShowSync(true)}
+              title="Sincronización manual por rango de fechas"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-primary hover:text-primary"
+            >
+              <RefreshCcw size={14} />
+              Sincronizar por rango
+            </button>
+          )}
           <span className="hidden sm:inline">{session.user.email}</span>
           <button
             onClick={() => supabase.auth.signOut()}
@@ -65,7 +74,21 @@ export default function App() {
         </div>
       </header>
 
-      <FacturacionInbox />
+      <nav className="mb-5 flex gap-1.5">
+        {MODULOS.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => setModulo(m.key)}
+            className={`rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors ${
+              modulo === m.key ? 'bg-primary text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-primary hover:text-primary'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </nav>
+
+      {modulo === 'facturas' ? <FacturacionInbox /> : <DoctoresModule />}
 
       {showSync && (
         <div className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-6" onClick={() => setShowSync(false)}>
