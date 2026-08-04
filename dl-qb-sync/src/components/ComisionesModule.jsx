@@ -94,21 +94,19 @@ export default function ComisionesModule() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <span className="flex items-center gap-2">
-              <Calculator size={16} />
-              Comisiones
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Lee directo de QuickBooks (facturas del rango) — no crea ni modifica nada allá.
-          </p>
+    <div className="space-y-4">
+      <div className="mb-1">
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <span className="mr-2 inline-flex"><Calculator size={18} /></span>
+          Comisiones
+        </h1>
+        <p className="mt-0.5 text-sm text-slate-500">
+          Lee directo de QuickBooks (facturas del rango) — no crea ni modifica nada allá.
+        </p>
+      </div>
 
+      <Card>
+        <CardContent className="space-y-4 pt-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Desde</span>

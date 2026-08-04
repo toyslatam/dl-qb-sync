@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Plus, Stethoscope, Pencil, Check, X, Loader2 } from 'lucide-react';
+import { Stethoscope, Plus, Pencil, Trash2, Check, Loader2, X, Search } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
+import { Modal } from './ui/Modal.jsx';
 
 const TITULOS = ['Dr.', 'Dra.', 'Dr(a).'];
-
 const VACIO = { titulo: 'Dr.', nombre: '', apellido: '', especialidad: '', comisionPct: '' };
 
 async function api(path, options) {
@@ -20,108 +19,53 @@ const inputClass =
 
 function DoctorForm({ valores, onChange }) {
   return (
-    <div className="grid grid-cols-[90px_1fr_1fr_1fr_110px] gap-2">
-      <select className={inputClass} value={valores.titulo} onChange={(e) => onChange({ ...valores, titulo: e.target.value })}>
-        {TITULOS.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      <input
-        className={inputClass}
-        placeholder="Nombre"
-        value={valores.nombre}
-        onChange={(e) => onChange({ ...valores, nombre: e.target.value })}
-      />
-      <input
-        className={inputClass}
-        placeholder="Apellido"
-        value={valores.apellido}
-        onChange={(e) => onChange({ ...valores, apellido: e.target.value })}
-      />
-      <input
-        className={inputClass}
-        placeholder="Especialidad"
-        value={valores.especialidad ?? ''}
-        onChange={(e) => onChange({ ...valores, especialidad: e.target.value })}
-      />
-      <div className="flex items-center gap-1">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <label className="block">
+        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Título</span>
+        <select className={inputClass} value={valores.titulo} onChange={(e) => onChange({ ...valores, titulo: e.target.value })}>
+          {TITULOS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Comisión</span>
         <input
           type="number"
           className={inputClass}
-          placeholder="%"
           value={valores.comisionPct}
           onChange={(e) => onChange({ ...valores, comisionPct: e.target.value })}
         />
-        <span className="text-xs text-slate-400">%</span>
-      </div>
-    </div>
-  );
-}
-
-/** Fila de doctor: en modo lectura por defecto, "Editar" la vuelve un formulario con Guardar/Cancelar explicitos. */
-function DoctorRow({ doctor, onGuardar, onEliminar }) {
-  const [editando, setEditando] = useState(false);
-  const [valores, setValores] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  function empezarEdicion() {
-    setValores({
-      titulo: doctor.titulo,
-      nombre: doctor.nombre,
-      apellido: doctor.apellido,
-      especialidad: doctor.especialidad ?? '',
-      comisionPct: Math.round(doctor.comision_pct * 100),
-    });
-    setEditando(true);
-  }
-
-  async function guardar() {
-    setBusy(true);
-    try {
-      await onGuardar(doctor.id, valores);
-      setEditando(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (editando) {
-    return (
-      <div className="rounded-xl border border-primary/30 bg-primary-light/40 p-3">
-        <DoctorForm valores={valores} onChange={setValores} />
-        <div className="mt-2 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditando(false)} disabled={busy}>
-            <X size={14} />
-            Cancelar
-          </Button>
-          <Button variant="primary" size="sm" onClick={guardar} disabled={busy}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            Guardar
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2.5 hover:border-slate-200">
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        <span className="w-52 shrink-0 truncate text-sm font-medium text-slate-800">
-          {doctor.titulo} {doctor.nombre} {doctor.apellido}
-        </span>
-        <span className="w-40 shrink-0 truncate text-sm text-slate-500">{doctor.especialidad || '—'}</span>
-        <span className="text-sm font-semibold text-primary">{Math.round(doctor.comision_pct * 100)}%</span>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={empezarEdicion}>
-          <Pencil size={14} />
-          Editar
-        </Button>
-        <button onClick={() => onEliminar(doctor.id)} className="flex h-9 w-9 items-center justify-center text-slate-300 hover:text-danger">
-          <Trash2 size={15} />
-        </button>
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Nombre</span>
+        <input
+          className={inputClass}
+          placeholder="Como aparece en la Nota del cliente"
+          value={valores.nombre}
+          onChange={(e) => onChange({ ...valores, nombre: e.target.value })}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Apellido</span>
+        <input
+          className={inputClass}
+          placeholder="Como aparece en la Nota del cliente"
+          value={valores.apellido}
+          onChange={(e) => onChange({ ...valores, apellido: e.target.value })}
+        />
+      </label>
+      <div className="sm:col-span-2">
+        <label className="block">
+          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Especialidad</span>
+          <input
+            className={inputClass}
+            value={valores.especialidad ?? ''}
+            onChange={(e) => onChange({ ...valores, especialidad: e.target.value })}
+          />
+        </label>
       </div>
     </div>
   );
@@ -130,11 +74,12 @@ function DoctorRow({ doctor, onGuardar, onEliminar }) {
 export default function DoctoresModule() {
   const [doctores, setDoctores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [agregando, setAgregando] = useState(false);
-  const [nuevo, setNuevo] = useState(VACIO);
-  const [busyNuevo, setBusyNuevo] = useState(false);
   const [error, setError] = useState('');
-  const [guardadoHint, setGuardadoHint] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+  const [valores, setValores] = useState(VACIO);
+  const [busy, setBusy] = useState(false);
 
   function cargar() {
     setLoading(true);
@@ -146,128 +91,168 @@ export default function DoctoresModule() {
 
   useEffect(cargar, []);
 
-  async function guardarDoctor(id, valores) {
-    setError('');
-    try {
-      await api(`/api/doctores/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          titulo: valores.titulo,
-          nombre: valores.nombre.trim(),
-          apellido: valores.apellido.trim(),
-          especialidad: valores.especialidad.trim() || null,
-          comisionPct: valores.comisionPct === '' ? 0 : Number(valores.comisionPct) / 100,
-        }),
-      });
-      setGuardadoHint('Doctor actualizado');
-      setTimeout(() => setGuardadoHint(''), 1800);
-      cargar();
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
+  function abrirNuevo() {
+    setEditandoId(null);
+    setValores(VACIO);
+    setModalAbierto(true);
   }
 
-  async function agregarDoctor() {
-    if (!nuevo.nombre.trim() || !nuevo.apellido.trim()) return;
-    setBusyNuevo(true);
+  function abrirEdicion(d) {
+    setEditandoId(d.id);
+    setValores({
+      titulo: d.titulo,
+      nombre: d.nombre,
+      apellido: d.apellido,
+      especialidad: d.especialidad ?? '',
+      comisionPct: Math.round(d.comision_pct * 100),
+    });
+    setModalAbierto(true);
+  }
+
+  async function guardar() {
+    if (!valores.nombre.trim() || !valores.apellido.trim()) {
+      setError('Nombre y apellido son requeridos');
+      return;
+    }
+    setBusy(true);
     setError('');
+    const payload = {
+      titulo: valores.titulo,
+      nombre: valores.nombre.trim(),
+      apellido: valores.apellido.trim(),
+      especialidad: valores.especialidad.trim() || null,
+      comisionPct: valores.comisionPct === '' ? 0 : Number(valores.comisionPct) / 100,
+    };
     try {
-      await api('/api/doctores', {
-        method: 'POST',
-        body: JSON.stringify({
-          titulo: nuevo.titulo,
-          nombre: nuevo.nombre.trim(),
-          apellido: nuevo.apellido.trim(),
-          especialidad: nuevo.especialidad.trim() || null,
-          comisionPct: nuevo.comisionPct === '' ? 0 : Number(nuevo.comisionPct) / 100,
-        }),
-      });
-      setNuevo(VACIO);
-      setAgregando(false);
-      setGuardadoHint('Doctor agregado');
-      setTimeout(() => setGuardadoHint(''), 1800);
+      if (editandoId) await api(`/api/doctores/${editandoId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      else await api('/api/doctores', { method: 'POST', body: JSON.stringify(payload) });
+      setModalAbierto(false);
       cargar();
     } catch (err) {
       setError(err.message);
     } finally {
-      setBusyNuevo(false);
+      setBusy(false);
     }
   }
 
-  async function eliminarDoctor(id) {
+  async function eliminar(id) {
     if (!confirm('¿Eliminar este doctor del catálogo?')) return;
     await api(`/api/doctores/${id}`, { method: 'DELETE' });
     cargar();
   }
 
+  const filtrados = doctores.filter((d) => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return true;
+    return `${d.titulo} ${d.nombre} ${d.apellido} ${d.especialidad ?? ''}`.toLowerCase().includes(q);
+  });
+
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <span className="flex items-center gap-2">
-              <Stethoscope size={16} />
-              Doctores
-            </span>
-          </CardTitle>
-          <div className="flex items-center gap-3">
-            {guardadoHint && <span className="text-[0.78rem] font-medium text-success">{guardadoHint}</span>}
-            <span className="text-[0.78rem] text-slate-400">{doctores.length} doctor(es)</span>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-500">
-            El <strong>nombre y apellido</strong> deben coincidir exactamente con lo que se escribe en la{' '}
-            <strong>"Nota para cliente"</strong> de la factura en QuickBooks.
+    <div className="flex h-full flex-col">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+            <span className="mr-2 inline-flex"><Stethoscope size={18} /></span>
+            Doctores
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Catálogo de doctores para el cálculo de comisiones. El nombre y apellido deben coincidir con la Nota del cliente
+            de la factura.
           </p>
+        </div>
+        <Button variant="primary" size="md" onClick={abrirNuevo}>
+          <Plus size={15} />
+          Agregar doctor
+        </Button>
+      </div>
 
-          {error && <p className="text-sm font-medium text-danger">{error}</p>}
+      <div className="relative mb-4 max-w-sm">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar doctor o especialidad…"
+          className={`${inputClass} pl-9`}
+        />
+      </div>
 
-          {loading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {doctores.map((d) => (
-                <DoctorRow key={d.id} doctor={d} onGuardar={guardarDoctor} onEliminar={eliminarDoctor} />
-              ))}
-            </div>
-          )}
+      {error && !modalAbierto && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
-          {agregando ? (
-            <div className="rounded-xl border border-primary/30 bg-primary-light/40 p-3">
-              <DoctorForm valores={nuevo} onChange={setNuevo} />
-              <div className="mt-2 flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setAgregando(false);
-                    setNuevo(VACIO);
-                  }}
-                  disabled={busyNuevo}
-                >
-                  <X size={14} />
-                  Cancelar
-                </Button>
-                <Button variant="primary" size="sm" onClick={agregarDoctor} disabled={busyNuevo}>
-                  {busyNuevo ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Guardar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button variant="secondary" size="md" onClick={() => setAgregando(true)}>
-              <Plus size={15} />
-              Agregar nuevo doctor
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex-1 overflow-hidden rounded-card border border-slate-200 bg-white shadow-card">
+        {loading ? (
+          <div className="space-y-2 p-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-11 animate-pulse rounded-lg bg-slate-100" />
+            ))}
+          </div>
+        ) : filtrados.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
+            <Stethoscope size={32} className="text-slate-300" />
+            <p className="text-sm font-medium text-slate-500">
+              {doctores.length === 0 ? 'Sin doctores en el catálogo todavía.' : 'Ningún doctor coincide con la búsqueda.'}
+            </p>
+            {doctores.length === 0 && (
+              <Button variant="secondary" size="sm" onClick={abrirNuevo} className="mt-1">
+                <Plus size={14} />
+                Agregar el primero
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                  <th className="px-5 py-3 font-semibold">Doctor</th>
+                  <th className="px-5 py-3 font-semibold">Especialidad</th>
+                  <th className="px-5 py-3 text-right font-semibold">Comisión</th>
+                  <th className="px-5 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map((d) => (
+                  <tr key={d.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                    <td className="px-5 py-3 font-medium text-slate-800">
+                      {d.titulo} {d.nombre} {d.apellido}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{d.especialidad || '—'}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-primary">{Math.round(d.comision_pct * 100)}%</td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => abrirEdicion(d)}>
+                          <Pencil size={13} />
+                          Editar
+                        </Button>
+                        <button
+                          onClick={() => eliminar(d.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-danger-light hover:text-danger"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <Modal open={modalAbierto} onClose={() => setModalAbierto(false)} title={editandoId ? 'Editar doctor' : 'Nuevo doctor'}>
+        <DoctorForm valores={valores} onChange={setValores} />
+        {error && <p className="mt-3 text-sm font-medium text-danger">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <Button variant="ghost" size="md" onClick={() => setModalAbierto(false)} disabled={busy}>
+            <X size={14} />
+            Cancelar
+          </Button>
+          <Button variant="primary" size="md" onClick={guardar} disabled={busy}>
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            Guardar
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -18,7 +18,7 @@ export default function PaymentSummary({ pago, estado }) {
           <h2 className="text-base font-bold text-slate-900">Pago #{pago.id}</h2>
           <StatusBadge estado={estado} />
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <Field label="Paciente" value={pago.nombrePaciente || `#${pago.idPaciente}`} />
           <Field label="Monto" value={`$${Number(pago.monto ?? 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`} />
           <Field label="Método de pago" value={pago.medioPago || '—'} />

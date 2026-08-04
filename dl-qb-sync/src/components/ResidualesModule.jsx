@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HeartPulse, Pencil, Check, Loader2, Plus, Trash2, Search, UserRound } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
 import { Modal } from './ui/Modal.jsx';
 import EntitySearchBox from './EntitySearchBox.jsx';
@@ -272,76 +271,88 @@ export default function ResidualesModule() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <span className="flex items-center gap-2">
-              <HeartPulse size={16} />
-              Residuales de Ortodoncia
-            </span>
-          </CardTitle>
-          <Button variant="primary" size="md" onClick={abrirNuevo}>
-            <Plus size={15} />
-            Agregar caso
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Para casos como abonos de Invisalign donde queda un residual pendiente de comisionar.
+    <div className="flex h-full flex-col">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+            <span className="mr-2 inline-flex"><HeartPulse size={18} /></span>
+            Residuales de Ortodoncia
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Casos como abonos de Invisalign donde queda un residual pendiente de comisionar.
           </p>
+        </div>
+        <Button variant="primary" size="md" onClick={abrirNuevo}>
+          <Plus size={15} />
+          Agregar caso
+        </Button>
+      </div>
 
-          {error && !modalAbierto && <p className="text-sm font-medium text-danger">{error}</p>}
+      {error && !modalAbierto && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
-          {loading ? (
-            <div className="space-y-2">
-              {[0, 1].map((i) => (
-                <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-              ))}
-            </div>
-          ) : casos.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">Sin casos residuales todavía.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[0.7rem] uppercase tracking-wide text-slate-400">
-                    <th className="pb-2 pr-3">Paciente</th>
-                    <th className="pb-2 pr-3">Doctor</th>
-                    <th className="pb-2 pr-3 text-right">Residual</th>
-                    <th className="pb-2 pr-3 text-right">Para Pagar</th>
-                    <th className="pb-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {casos.map((c) => {
-                    const { paraPagar } = calcular(valoresDesde(c));
-                    const doctorLabel = c.doctores ? `${c.doctores.titulo} ${c.doctores.nombre} ${c.doctores.apellido}` : '—';
-                    return (
-                      <tr key={c.id} className="border-t border-slate-100">
-                        <td className="py-2 pr-3 font-medium text-slate-800">{c.paciente}</td>
-                        <td className="py-2 pr-3 text-slate-600">{doctorLabel}</td>
-                        <td className="py-2 pr-3 text-right text-slate-600">${Number(c.monto_residual).toFixed(2)}</td>
-                        <td className="py-2 pr-3 text-right font-semibold text-primary">${paraPagar.toFixed(2)}</td>
-                        <td className="py-2 text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => abrirEdicion(c)}>
-                              <Pencil size={13} />
-                            </Button>
-                            <button onClick={() => eliminarCaso(c.id)} className="flex h-8 w-8 items-center justify-center text-slate-300 hover:text-danger">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex-1 overflow-hidden rounded-card border border-slate-200 bg-white shadow-card">
+        {loading ? (
+          <div className="space-y-2 p-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-11 animate-pulse rounded-lg bg-slate-100" />
+            ))}
+          </div>
+        ) : casos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
+            <HeartPulse size={32} className="text-slate-300" />
+            <p className="text-sm font-medium text-slate-500">Sin casos residuales todavía.</p>
+            <p className="max-w-sm text-[0.85rem] text-slate-400">
+              Cuando quede un residual de comisión pendiente (ej. abonos de Invisalign), agrégalo aquí.
+            </p>
+            <Button variant="secondary" size="sm" onClick={abrirNuevo} className="mt-1">
+              <Plus size={14} />
+              Agregar el primero
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                  <th className="px-5 py-3 font-semibold">Paciente</th>
+                  <th className="px-5 py-3 font-semibold">Doctor</th>
+                  <th className="px-5 py-3 text-right font-semibold">Residual</th>
+                  <th className="px-5 py-3 text-right font-semibold">Para pagar</th>
+                  <th className="px-5 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {casos.map((c) => {
+                  const { paraPagar } = calcular(valoresDesde(c));
+                  const doctorLabel = c.doctores ? `${c.doctores.titulo} ${c.doctores.nombre} ${c.doctores.apellido}` : '—';
+                  return (
+                    <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                      <td className="px-5 py-3 font-medium text-slate-800">{c.paciente}</td>
+                      <td className="px-5 py-3 text-slate-500">{doctorLabel}</td>
+                      <td className="px-5 py-3 text-right text-slate-600">${Number(c.monto_residual).toFixed(2)}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-primary">${paraPagar.toFixed(2)}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => abrirEdicion(c)}>
+                            <Pencil size={13} />
+                            Editar
+                          </Button>
+                          <button
+                            onClick={() => eliminarCaso(c.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-danger-light hover:text-danger"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <Modal
         open={modalAbierto}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCcw, LogOut, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { supabase } from './lib/supabaseClient.js';
 import { apiFetch } from './lib/api.js';
 import Login from './components/Login.jsx';
@@ -9,14 +9,7 @@ import DoctoresModule from './components/DoctoresModule.jsx';
 import MasterModule from './components/MasterModule.jsx';
 import ResidualesModule from './components/ResidualesModule.jsx';
 import ComisionesModule from './components/ComisionesModule.jsx';
-
-const MODULOS = [
-  { key: 'facturas', label: 'Facturas de Venta' },
-  { key: 'comisiones', label: 'Comisiones' },
-  { key: 'doctores', label: 'Doctores' },
-  { key: 'master', label: 'Master' },
-  { key: 'residuales', label: 'Residuales' },
-];
+import Sidebar from './components/Sidebar.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = cargando, null = sin sesion
@@ -44,61 +37,27 @@ export default function App() {
   if (!session) return <Login />;
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-5 sm:px-6">
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Dentalink → QuickBooks</h1>
-          {health && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ${
-                health.ok ? 'bg-success-light text-success' : 'bg-danger-light text-danger'
-              }`}
-            >
-              {health.ok ? 'API conectada' : 'Sin conexión'}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-sm text-slate-500">
-          {modulo === 'facturas' && (
-            <button
-              onClick={() => setShowSync(true)}
-              title="Sincronización manual por rango de fechas"
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-primary hover:text-primary"
-            >
-              <RefreshCcw size={14} />
-              Sincronizar por rango
-            </button>
-          )}
-          <span className="hidden sm:inline">{session.user.email}</span>
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-danger hover:text-danger"
-          >
-            <LogOut size={14} />
-            Salir
-          </button>
-        </div>
-      </header>
+    <div className="flex h-screen overflow-hidden bg-bg">
+      <Sidebar
+        modulo={modulo}
+        onModuloChange={setModulo}
+        health={health}
+        email={session.user.email}
+        onSync={() => setShowSync(true)}
+        onSignOut={() => supabase.auth.signOut()}
+      />
 
-      <nav className="mb-5 flex gap-1.5">
-        {MODULOS.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setModulo(m.key)}
-            className={`rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              modulo === m.key ? 'bg-primary text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-primary hover:text-primary'
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
-      </nav>
-
-      {modulo === 'facturas' && <FacturacionInbox />}
-      {modulo === 'doctores' && <DoctoresModule />}
-      {modulo === 'master' && <MasterModule />}
-      {modulo === 'residuales' && <ResidualesModule />}
-      {modulo === 'comisiones' && <ComisionesModule />}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className={modulo === 'facturas' ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
+          <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
+            {modulo === 'facturas' && <FacturacionInbox />}
+            {modulo === 'comisiones' && <ComisionesModule />}
+            {modulo === 'doctores' && <DoctoresModule />}
+            {modulo === 'master' && <MasterModule />}
+            {modulo === 'residuales' && <ResidualesModule />}
+          </div>
+        </main>
+      </div>
 
       {showSync && (
         <div className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-6" onClick={() => setShowSync(false)}>

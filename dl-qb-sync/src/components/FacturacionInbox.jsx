@@ -241,8 +241,8 @@ export default function FacturacionInbox() {
   const totalFactura = draft ? draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0) : 0;
 
   return (
-    <div className="flex h-[calc(100vh-88px)] gap-5 pb-20">
-      <aside className="w-[36%] min-w-[320px] max-w-[420px]">
+    <div className="flex h-full gap-6">
+      <aside className="w-[30%] min-w-[300px]">
         <PaymentsSidebar
           fecha={fecha}
           onFechaChange={setFecha}
@@ -255,7 +255,7 @@ export default function FacturacionInbox() {
         />
       </aside>
 
-      <section className="flex-1 overflow-y-auto">
+      <section className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence mode="wait">
           {!selected && (
             <motion.div

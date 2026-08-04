@@ -33,7 +33,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
       <CardHeader>
         <CardTitle>Datos de la factura</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="N.° de factura">
           <input
             value={factura?.docNumber ?? ''}
@@ -65,7 +65,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
             className={inputClass}
           />
         </Field>
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2 lg:col-span-4">
           <Field label="Doctor (Nota para el cliente)">
             <input
               list="doctores-catalogo"
@@ -88,7 +88,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
           )}
         </div>
 
-        <div className="sm:col-span-2 mt-1 rounded-xl bg-slate-50 p-3.5">
+        <div className="sm:col-span-2 lg:col-span-4 mt-1 rounded-xl bg-slate-50 p-3.5">
           <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
             Depósito a registrar (si se usa "Crear factura + registrar pago")
           </p>
