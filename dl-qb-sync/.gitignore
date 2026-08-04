@@ -5,6 +5,9 @@ server/db/*.sqlite
 server/db/*.sqlite-*
 
 # Excel con datos reales de pacientes/comisiones, solo se usa localmente para
-# el seed de una sola vez -- nunca debe subirse a un repo de Git.
+# el seed de una sola vez -- nunca debe subirse a un repo de Git NI vivir en
+# public/ (Vite/Express sirven ese contenido publicamente sin autenticacion).
+data/*.xlsx
 public/*.xlsx
 public/~$*
+data/~$*

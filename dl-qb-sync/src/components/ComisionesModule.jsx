@@ -3,6 +3,7 @@ import { Calculator, Download, Loader2, FlaskConical, UserX } from 'lucide-react
 import { apiFetch } from '../lib/api.js';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
+import SearchableSelect from './ui/SearchableSelect.jsx';
 
 function hoy() {
   const d = new Date();
@@ -186,18 +187,13 @@ export default function ComisionesModule() {
                         · #{s.docNumber} · {s.fecha} · nota: "{s.notaCliente || '(vacía)'}" · ${Number(s.total).toFixed(2)}
                       </span>
                     </div>
-                    <select
-                      className={`${inputClass} w-64`}
-                      value={asignacionesDoctor[s.idFactura] ?? ''}
-                      onChange={(e) => asignarDoctor(s.idFactura, e.target.value || null)}
-                    >
-                      <option value="">(elegir doctor)</option>
-                      {resultado.doctoresDisponibles.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.titulo} {d.nombre} {d.apellido}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+                      className="w-64"
+                      options={resultado.doctoresDisponibles.map((d) => ({ value: d.id, label: `${d.titulo} ${d.nombre} ${d.apellido}` }))}
+                      value={asignacionesDoctor[s.idFactura]}
+                      onChange={(v) => asignarDoctor(s.idFactura, v)}
+                      placeholder="(elegir doctor)"
+                    />
                   </div>
                 ))}
               </CardContent>
@@ -228,18 +224,16 @@ export default function ComisionesModule() {
                         · {l.doctorTexto || 'sin doctor'} · #{l.numero} · {l.fecha} · ${Number(l.monto).toFixed(2)}
                       </span>
                     </div>
-                    <select
-                      className={`${inputClass} w-64`}
-                      value={asignaciones[l.indice] ?? ''}
-                      onChange={(e) => asignarLaboratorio(l.indice, e.target.value || null)}
-                    >
-                      <option value="">(elegir factura)</option>
-                      {resultado.filas.map((f) => (
-                        <option key={f.idFactura} value={f.idFactura}>
-                          #{f.numeroPago} · {f.nombrePaciente} {f.apellidosPaciente} · {f.doctor} · ${f.totalAsociado.toFixed(2)}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+                      className="w-72"
+                      options={resultado.filas.map((f) => ({
+                        value: f.idFactura,
+                        label: `#${f.numeroPago} · ${f.nombrePaciente} ${f.apellidosPaciente} · ${f.doctor} · $${f.totalAsociado.toFixed(2)}`,
+                      }))}
+                      value={asignaciones[l.indice]}
+                      onChange={(v) => asignarLaboratorio(l.indice, v)}
+                      placeholder="(elegir factura)"
+                    />
                   </div>
                 ))}
               </CardContent>

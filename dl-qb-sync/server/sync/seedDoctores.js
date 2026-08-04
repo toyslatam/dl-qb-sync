@@ -24,7 +24,7 @@ function parseDoctor(texto) {
  * Corre con: npm run seed-doctores
  */
 async function main() {
-  const excelPath = path.join(__dirname, '..', '..', 'public', '0226-DentalOne-Comisiones.xlsx');
+  const excelPath = path.join(__dirname, '..', '..', 'data', '0226-DentalOne-Comisiones.xlsx');
   const wb = XLSX.readFile(excelPath);
   const sheet = wb.Sheets['Tabla%'];
   const filas = XLSX.utils.sheet_to_json(sheet, { header: 1, range: 'B2:H25', defval: '' });

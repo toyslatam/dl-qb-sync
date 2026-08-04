@@ -3,6 +3,7 @@ import { HeartPulse, Pencil, Check, Loader2, Plus, Trash2, Search, UserRound } f
 import { apiFetch } from '../lib/api.js';
 import { Button } from './ui/Button.jsx';
 import { Modal } from './ui/Modal.jsx';
+import SearchableSelect from './ui/SearchableSelect.jsx';
 import EntitySearchBox from './EntitySearchBox.jsx';
 
 async function api(path, options) {
@@ -115,14 +116,12 @@ function ResidualForm({ valores, onChange, doctores }) {
         </label>
         <label className="block">
           <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Doctor</span>
-          <select className={inputClass} value={valores.doctorId ?? ''} onChange={(e) => elegirDoctor(e.target.value || null)}>
-            <option value="">(elegir doctor)</option>
-            {doctores.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.titulo} {d.nombre} {d.apellido}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={doctores.map((d) => ({ value: d.id, label: `${d.titulo} ${d.nombre} ${d.apellido}` }))}
+            value={valores.doctorId}
+            onChange={elegirDoctor}
+            placeholder="(elegir doctor)"
+          />
         </label>
       </div>
 
