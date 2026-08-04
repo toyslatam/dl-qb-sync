@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { supabase } from './lib/supabaseClient.js';
 import { apiFetch } from './lib/api.js';
 import Login from './components/Login.jsx';
@@ -12,9 +12,9 @@ import ComisionesModule from './components/ComisionesModule.jsx';
 import ResumenFacturasModule from './components/ResumenFacturasModule.jsx';
 import Sidebar from './components/Sidebar.jsx';
 
-// Correos con acceso completo (facturacion + comisiones + doctores + master +
-// residuales). Cualquier otro usuario que inicie sesion solo ve el resumen de
-// estados de facturacion, de solo lectura.
+// Correos con acceso completo a la pestana Facturas (crear/editar). Cualquier
+// otro usuario ve ahi un resumen de solo lectura en su lugar; el resto de la
+// app (Comisiones, Doctores, Master, Residuales) es igual para todos.
 const ADMIN_EMAILS = ['contabilidad02@ctauditores.com'];
 
 export default function App() {
@@ -43,31 +43,7 @@ export default function App() {
   if (!session) return <Login />;
 
   const esAdmin = ADMIN_EMAILS.includes(session.user.email);
-
-  if (!esAdmin) {
-    return (
-      <div className="flex h-screen flex-col overflow-hidden bg-bg">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <img src="/dental-one-logo.jpg" alt="Dental One" className="h-16 w-auto object-contain" />
-          <div className="flex items-center gap-3">
-            <span className="text-[0.82rem] text-slate-500">{session.user.email}</span>
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 hover:border-danger hover:text-danger"
-            >
-              <LogOut size={14} />
-              Salir
-            </button>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
-            <ResumenFacturasModule />
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const enFacturas = modulo === 'facturas';
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
@@ -81,9 +57,9 @@ export default function App() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className={modulo === 'facturas' ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
+        <main className={enFacturas && esAdmin ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
           <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
-            {modulo === 'facturas' && <FacturacionInbox />}
+            {modulo === 'facturas' && (esAdmin ? <FacturacionInbox /> : <ResumenFacturasModule />)}
             {modulo === 'comisiones' && <ComisionesModule />}
             {modulo === 'doctores' && <DoctoresModule />}
             {modulo === 'master' && <MasterModule />}
