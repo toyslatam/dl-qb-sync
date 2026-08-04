@@ -92,37 +92,23 @@ function qboQuery2(query) {
   return qboFetch2(`/query?query=${encodeURIComponent(query)}`);
 }
 
-/** Busca un custom field por nombre en cualquier lista de CustomField (encabezado o linea), sin importar mayusculas. */
-function valorCustomField(objetoConCustomFields, nombreCampo) {
-  const campo = (objetoConCustomFields?.CustomField ?? []).find(
-    (c) => (c.Name || '').trim().toLowerCase() === nombreCampo.toLowerCase()
-  );
-  return campo?.StringValue ?? campo?.StringValue?.value ?? null;
-}
-
 /**
- * El campo "Patient" que se ve en la UI de QuickBooks puede venir de varios
- * lugares segun como se configuro: Cliente/Proyecto estandar de la linea,
- * custom field de linea, o custom field del encabezado de la factura. Se
- * prueban todos en orden hasta encontrar uno con valor.
+ * OJO: la API publica de QuickBooks NO expone custom fields en Bill/Purchase
+ * (a diferencia de Invoice) -- se confirmo leyendo el JSON crudo de una
+ * factura de proveedor real: el campo "DOCTOR" que se ve en la pantalla de
+ * QuickBooks simplemente no viaja en la respuesta de la API. Por eso el
+ * paciente se lee del campo estandar Cliente de la linea (si confirmado que
+ * si viaja), y el "doctor" solo se puede ofrecer como texto libre de la
+ * Descripcion de la linea (pista para que la persona lo lea a mano, no un
+ * dato estructurado confiable para matchear automaticamente).
  */
-function extraerPaciente(bill, linea, detalle) {
-  return (
-    detalle?.CustomerRef?.name ||
-    valorCustomField(linea, 'Patient') ||
-    valorCustomField(linea, 'PATIENT') ||
-    valorCustomField(bill, 'Patient') ||
-    valorCustomField(bill, 'PATIENT') ||
-    ''
-  );
-}
 
 /**
  * Trae los costos de laboratorio (Bills/facturas de proveedor) de un rango de
  * fechas, filtrados a la cuenta de costo de laboratorio configurada
  * (QBO2_CUENTA_LABORATORIO). Devuelve una linea por cada linea de la factura
- * de proveedor que cae en esa cuenta, con el paciente (Customer de la linea)
- * y el doctor (custom field "DOCTOR" de la factura).
+ * de proveedor que cae en esa cuenta, con el paciente (Cliente estandar de
+ * la linea) y la descripcion completa de la linea como pista de contexto.
  */
 export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
   if (!CUENTA_LABORATORIO) {
@@ -143,7 +129,6 @@ export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
 
   const costos = [];
   for (const bill of bills) {
-    const doctorTexto = valorCustomField(bill, 'DOCTOR');
     for (const linea of bill.Line ?? []) {
       const detalle = linea.AccountBasedExpenseLineDetail ?? linea.ItemBasedExpenseLineDetail;
       const cuentaNombre = detalle?.AccountRef?.name ?? detalle?.ItemRef?.name ?? '';
@@ -154,8 +139,10 @@ export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
         numero: bill.DocNumber ?? bill.Id,
         fecha: bill.TxnDate,
         proveedor: bill.VendorRef?.name ?? '',
-        paciente: extraerPaciente(bill, linea, detalle),
-        doctorTexto,
+        paciente: detalle?.CustomerRef?.name ?? '',
+        // Texto libre (no estructurado) que suele incluir el doctor -- es
+        // solo una pista para revisar a mano, no un dato confiable.
+        doctorTexto: linea.Description ?? '',
         monto: Number(linea.Amount ?? 0),
       });
     }
