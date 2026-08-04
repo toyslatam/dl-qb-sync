@@ -178,7 +178,7 @@ export default function DoctoresModule() {
 
       {error && !modalAbierto && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
-      <div className="flex-1 overflow-hidden rounded-card border border-slate-200 bg-white shadow-card">
+      <div className="flex-1 overflow-y-auto rounded-card border border-slate-200 bg-white shadow-card">
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2, 3].map((i) => (

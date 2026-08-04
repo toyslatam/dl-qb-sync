@@ -86,7 +86,7 @@ export default function ResumenFacturasModule() {
 
       {error && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
-      <div className="flex-1 overflow-hidden rounded-card border border-slate-200 bg-white shadow-card">
+      <div className="flex-1 overflow-y-auto rounded-card border border-slate-200 bg-white shadow-card">
         {pagos === null ? (
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
             <ClipboardList size={32} className="text-slate-300" />
