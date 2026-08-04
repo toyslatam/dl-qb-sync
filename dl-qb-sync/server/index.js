@@ -630,9 +630,9 @@ app.delete('/api/residuales/:id', async (req, res) => {
 // POST (no GET) porque lleva las asignaciones manuales de laboratorio en el body.
 app.post('/api/comisiones', async (req, res) => {
   try {
-    const { desde, hasta, asignacionesLaboratorio } = req.body ?? {};
+    const { desde, hasta, asignacionesLaboratorio, asignacionesDoctor } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    res.json(await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio }));
+    res.json(await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio, asignacionesDoctor }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -641,9 +641,9 @@ app.post('/api/comisiones', async (req, res) => {
 
 app.post('/api/comisiones/descargar', async (req, res) => {
   try {
-    const { desde, hasta, asignacionesLaboratorio } = req.body ?? {};
+    const { desde, hasta, asignacionesLaboratorio, asignacionesDoctor } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    const resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio });
+    const resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio, asignacionesDoctor });
     const buffer = construirExcelComisiones(resultado);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="comisiones-${desde}-a-${hasta}.xlsx"`);

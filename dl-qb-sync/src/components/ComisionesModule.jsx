@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Download, Loader2, FlaskConical } from 'lucide-react';
+import { Calculator, Download, Loader2, FlaskConical, UserX } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
@@ -23,17 +23,23 @@ export default function ComisionesModule() {
   const [hasta, setHasta] = useState(hoy());
   const [resultado, setResultado] = useState(null);
   const [asignaciones, setAsignaciones] = useState({}); // indice del costo de laboratorio -> idFactura
+  const [asignacionesDoctor, setAsignacionesDoctor] = useState({}); // idFactura -> id del doctor
   const [loading, setLoading] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState('');
 
-  async function calcular(asignacionesActuales = asignaciones) {
+  async function calcular(asignacionesActuales = asignaciones, asignacionesDoctorActuales = asignacionesDoctor) {
     setLoading(true);
     setError('');
     try {
       const res = await apiFetch('/api/comisiones', {
         method: 'POST',
-        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignacionesActuales }),
+        body: JSON.stringify({
+          desde,
+          hasta,
+          asignacionesLaboratorio: asignacionesActuales,
+          asignacionesDoctor: asignacionesDoctorActuales,
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Error desconocido');
@@ -50,7 +56,15 @@ export default function ComisionesModule() {
     if (idFactura) nuevas[indice] = idFactura;
     else delete nuevas[indice];
     setAsignaciones(nuevas);
-    calcular(nuevas);
+    calcular(nuevas, asignacionesDoctor);
+  }
+
+  function asignarDoctor(idFactura, doctorId) {
+    const nuevas = { ...asignacionesDoctor };
+    if (doctorId) nuevas[idFactura] = doctorId;
+    else delete nuevas[idFactura];
+    setAsignacionesDoctor(nuevas);
+    calcular(asignaciones, nuevas);
   }
 
   async function descargar() {
@@ -59,7 +73,7 @@ export default function ComisionesModule() {
     try {
       const res = await apiFetch('/api/comisiones/descargar', {
         method: 'POST',
-        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignaciones }),
+        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignaciones, asignacionesDoctor }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -109,7 +123,8 @@ export default function ComisionesModule() {
               size="md"
               onClick={() => {
                 setAsignaciones({});
-                calcular({});
+                setAsignacionesDoctor({});
+                calcular({}, {});
               }}
               disabled={loading}
             >
@@ -146,6 +161,51 @@ export default function ComisionesModule() {
 
       {resultado && (
         <>
+          {resultado.sinIdentificar.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <span className="flex items-center gap-2 text-danger">
+                    <UserX size={16} />
+                    Facturas sin doctor identificado ({resultado.sinIdentificar.length})
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="mb-1 text-sm text-slate-500">
+                  La Nota para cliente no coincide con ningún doctor del catálogo. Elige el doctor real para que esta factura
+                  entre en el cálculo (esto solo corrige el reporte, no cambia la factura en QuickBooks).
+                </p>
+                {resultado.sinIdentificar.map((s) => (
+                  <div
+                    key={s.idFactura}
+                    className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-danger-light px-3 py-2.5"
+                  >
+                    <div className="min-w-[220px] flex-1 text-sm">
+                      <span className="font-medium text-slate-800">{s.paciente || '(sin paciente)'}</span>
+                      <span className="text-slate-500">
+                        {' '}
+                        · #{s.docNumber} · {s.fecha} · nota: "{s.notaCliente || '(vacía)'}" · ${Number(s.total).toFixed(2)}
+                      </span>
+                    </div>
+                    <select
+                      className={`${inputClass} w-64`}
+                      value={asignacionesDoctor[s.idFactura] ?? ''}
+                      onChange={(e) => asignarDoctor(s.idFactura, e.target.value || null)}
+                    >
+                      <option value="">(elegir doctor)</option>
+                      {resultado.doctoresDisponibles.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.titulo} {d.nombre} {d.apellido}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {resultado.laboratoriosPendientes.length > 0 && (
             <Card>
               <CardHeader>

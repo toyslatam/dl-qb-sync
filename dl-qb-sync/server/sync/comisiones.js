@@ -24,7 +24,7 @@ function normalizar(texto) {
  * de fechas, leyendo SOLO de QuickBooks (facturas ya creadas) + los catalogos
  * de Doctores/Master/Residuales en Supabase. No escribe nada en QuickBooks.
  */
-export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesLaboratorio = {} }) {
+export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesLaboratorio = {}, asignacionesDoctor = {} }) {
   const [invoices, doctores, metodosPago, residuales] = await Promise.all([
     getInvoicesByDateRange(fechaDesde, fechaHasta),
     getDoctores(),
@@ -62,6 +62,7 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
   const laboratorioUsado = new Set();
 
   const doctoresPorClave = new Map(doctores.map((d) => [`${normalizar(d.nombre)}|${normalizar(d.apellido)}`, d]));
+  const doctoresPorId = new Map(doctores.map((d) => [String(d.id), d]));
   const descuentoPorMedio = new Map(metodosPago.map((m) => [m.medio_pago, m.porcentaje]));
 
   // Primera pasada: arma las lineas base y cuenta cuantas facturas hay por
@@ -77,7 +78,8 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
   for (const inv of invoices) {
     const memo = inv.CustomerMemo?.value ?? '';
     const { nombre, apellido } = separarNombreApellido(memo);
-    const doctor = doctoresPorClave.get(`${normalizar(nombre)}|${normalizar(apellido)}`);
+    const doctorAsignadoManual = doctoresPorId.get(String(asignacionesDoctor[inv.Id] ?? ''));
+    const doctor = doctorAsignadoManual ?? doctoresPorClave.get(`${normalizar(nombre)}|${normalizar(apellido)}`);
 
     const pacienteNombre = inv.CustomerRef?.name ?? '';
     const { nombre: pacienteNombreSep, apellido: pacienteApellidoSep } = separarNombreApellido(pacienteNombre);
@@ -194,6 +196,7 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
     laboratorioError,
     totalGeneral,
     facturasEncontradas: invoices.length,
+    doctoresDisponibles: doctores.map((d) => ({ id: d.id, titulo: d.titulo, nombre: d.nombre, apellido: d.apellido })),
   };
 }
 
