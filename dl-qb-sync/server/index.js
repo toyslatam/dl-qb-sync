@@ -44,6 +44,7 @@ import {
   getPaymentMethods,
   getDepositAccounts,
 } from './integrations/quickbooks.js';
+import { getAuthorizeUri2, handleOAuthCallback2 } from './integrations/quickbooks2.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -52,7 +53,7 @@ app.use(express.json());
 
 // Rutas que no requieren login (health check y el handshake OAuth de QuickBooks,
 // que es una redireccion de navegador y no puede llevar el header Authorization).
-const PUBLIC_API_PATHS = ['/api/health', '/api/qbo/connect', '/api/qbo/callback'];
+const PUBLIC_API_PATHS = ['/api/health', '/api/qbo/connect', '/api/qbo/callback', '/api/qbo2/connect', '/api/qbo2/callback'];
 
 const supabaseAuth = process.env.SUPABASE_URL
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
@@ -103,6 +104,26 @@ app.get('/api/qbo/callback', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send(`Error en OAuth callback: ${err.message}`);
+  }
+});
+
+// --- QuickBooks #2 OAuth (solo lectura, para el costo de laboratorio de Comisiones) ---
+app.get('/api/qbo2/connect', (_req, res) => {
+  res.redirect(getAuthorizeUri2());
+});
+
+app.get('/api/qbo2/callback', async (req, res) => {
+  try {
+    const token = await handleOAuthCallback2(req.url.startsWith('http') ? req.url : `http://localhost${req.originalUrl}`);
+    res.send(
+      `Conectado a QuickBooks #2 (solo lectura).<br>` +
+        `Copia estos valores a tu .env si hace falta:<br>` +
+        `QBO2_REFRESH_TOKEN=<code>${token.refresh_token}</code><br>` +
+        `QBO2_REALM_ID=<code>${req.query.realmId}</code>`
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(`Error en OAuth callback de QuickBooks #2: ${err.message}`);
   }
 });
 
@@ -606,22 +627,23 @@ app.delete('/api/residuales/:id', async (req, res) => {
 });
 
 // --- Reporte de Comisiones (solo lectura de QuickBooks, no escribe nada) ---
-app.get('/api/comisiones', async (req, res) => {
+// POST (no GET) porque lleva las asignaciones manuales de laboratorio en el body.
+app.post('/api/comisiones', async (req, res) => {
   try {
-    const { desde, hasta } = req.query ?? {};
+    const { desde, hasta, asignacionesLaboratorio } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    res.json(await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta }));
+    res.json(await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/comisiones/descargar', async (req, res) => {
+app.post('/api/comisiones/descargar', async (req, res) => {
   try {
-    const { desde, hasta } = req.query ?? {};
+    const { desde, hasta, asignacionesLaboratorio } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    const resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta });
+    const resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio });
     const buffer = construirExcelComisiones(resultado);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="comisiones-${desde}-a-${hasta}.xlsx"`);
