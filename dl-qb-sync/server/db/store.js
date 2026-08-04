@@ -227,4 +227,37 @@ export async function upsertMetodoPagoDescuento(medioPago, porcentaje) {
   return data;
 }
 
+// --- Residuales de ortodoncia (abonos Invisalign, modulo de Comisiones) ---
+
+export async function getResiduales() {
+  const { data, error } = await supabase
+    .from('residuales_ortodoncia')
+    .select('*, doctores(id, titulo, nombre, apellido)')
+    .order('created_at', { ascending: false });
+  assertOk(error, 'getResiduales');
+  return data ?? [];
+}
+
+export async function createResidual(residual) {
+  const { data, error } = await supabase.from('residuales_ortodoncia').insert(residual).select('*, doctores(id, titulo, nombre, apellido)').single();
+  assertOk(error, 'createResidual');
+  return data;
+}
+
+export async function updateResidual(id, cambios) {
+  const { data, error } = await supabase
+    .from('residuales_ortodoncia')
+    .update({ ...cambios, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*, doctores(id, titulo, nombre, apellido)')
+    .single();
+  assertOk(error, 'updateResidual');
+  return data;
+}
+
+export async function deleteResidual(id) {
+  const { error } = await supabase.from('residuales_ortodoncia').delete().eq('id', id);
+  assertOk(error, 'deleteResidual');
+}
+
 export default supabase;

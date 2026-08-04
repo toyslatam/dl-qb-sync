@@ -7,11 +7,13 @@ import FacturacionInbox from './components/FacturacionInbox.jsx';
 import SyncPanel from './components/SyncPanel.jsx';
 import DoctoresModule from './components/DoctoresModule.jsx';
 import MasterModule from './components/MasterModule.jsx';
+import ResidualesModule from './components/ResidualesModule.jsx';
 
 const MODULOS = [
   { key: 'facturas', label: 'Facturas de Venta' },
   { key: 'doctores', label: 'Doctores' },
   { key: 'master', label: 'Master' },
+  { key: 'residuales', label: 'Residuales' },
 ];
 
 export default function App() {
@@ -93,6 +95,7 @@ export default function App() {
       {modulo === 'facturas' && <FacturacionInbox />}
       {modulo === 'doctores' && <DoctoresModule />}
       {modulo === 'master' && <MasterModule />}
+      {modulo === 'residuales' && <ResidualesModule />}
 
       {showSync && (
         <div className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-6" onClick={() => setShowSync(false)}>

@@ -83,6 +83,24 @@ insert into metodos_pago_descuento (medio_pago, porcentaje) values
   ('Yappy - Banco General', 0.02)
 on conflict (medio_pago) do nothing;
 
+-- Hoja "ResidualesAbonos" del Excel de comisiones: casos de residual de
+-- ortodoncia (ej. abonos Invisalign). El monto residual y la lista de abonos
+-- se escriben a mano (es una reconciliacion caso por caso, no una formula
+-- generica); el resto (descuento tarjeta, final, comision a pagar) se
+-- calcula solo en el frontend a partir de esos datos.
+create table if not exists residuales_ortodoncia (
+  id bigint generated always as identity primary key,
+  doctor_id bigint references doctores(id) on delete set null,
+  paciente text not null,
+  abonos jsonb not null default '[]', -- [{ nombre, monto }]
+  monto_residual numeric not null default 0,
+  descuento_pct numeric not null default 0.027,
+  comision_pct numeric not null default 0,
+  pagado boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -93,3 +111,4 @@ alter table review_queue enable row level security;
 alter table oauth_tokens enable row level security;
 alter table doctores enable row level security;
 alter table metodos_pago_descuento enable row level security;
+alter table residuales_ortodoncia enable row level security;

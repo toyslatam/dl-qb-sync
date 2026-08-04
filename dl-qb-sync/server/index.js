@@ -25,6 +25,10 @@ import {
   deleteDoctor,
   getMetodosPagoDescuento,
   upsertMetodoPagoDescuento,
+  getResiduales,
+  createResidual,
+  updateResidual,
+  deleteResidual,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import {
@@ -537,6 +541,63 @@ app.post('/api/master/metodos-pago', async (req, res) => {
     const { medioPago, porcentaje } = req.body ?? {};
     if (!medioPago) return res.status(400).json({ error: 'medioPago requerido' });
     res.json(await upsertMetodoPagoDescuento(medioPago, Number(porcentaje) || 0));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Residuales de ortodoncia (modulo de Comisiones) ---
+app.get('/api/residuales', async (_req, res) => {
+  try {
+    res.json(await getResiduales());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/residuales', async (req, res) => {
+  try {
+    const { doctorId, paciente, abonos, montoResidual, descuentoPct, comisionPct } = req.body ?? {};
+    if (!paciente) return res.status(400).json({ error: 'paciente requerido' });
+    const creado = await createResidual({
+      doctor_id: doctorId ?? null,
+      paciente,
+      abonos: abonos ?? [],
+      monto_residual: Number(montoResidual) || 0,
+      descuento_pct: descuentoPct !== undefined ? Number(descuentoPct) : 0.027,
+      comision_pct: comisionPct !== undefined ? Number(comisionPct) : 0,
+    });
+    res.json(creado);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/residuales/:id', async (req, res) => {
+  try {
+    const { doctorId, paciente, abonos, montoResidual, descuentoPct, comisionPct, pagado } = req.body ?? {};
+    const cambios = {};
+    if (doctorId !== undefined) cambios.doctor_id = doctorId;
+    if (paciente !== undefined) cambios.paciente = paciente;
+    if (abonos !== undefined) cambios.abonos = abonos;
+    if (montoResidual !== undefined) cambios.monto_residual = Number(montoResidual);
+    if (descuentoPct !== undefined) cambios.descuento_pct = Number(descuentoPct);
+    if (comisionPct !== undefined) cambios.comision_pct = Number(comisionPct);
+    if (pagado !== undefined) cambios.pagado = Boolean(pagado);
+    res.json(await updateResidual(req.params.id, cambios));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/residuales/:id', async (req, res) => {
+  try {
+    await deleteResidual(req.params.id);
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
