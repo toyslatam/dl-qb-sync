@@ -160,6 +160,23 @@ export async function getAllCustomers() {
   return customers;
 }
 
+/** Trae las facturas (Invoice) emitidas en un rango de fechas (TxnDate), solo lectura. Para el modulo de Comisiones. */
+export async function getInvoicesByDateRange(fechaDesde, fechaHasta) {
+  const invoices = [];
+  let startPosition = 1;
+  const pageSize = 200;
+  while (true) {
+    const result = await qboQuery(
+      `select * from Invoice where TxnDate >= '${fechaDesde}' and TxnDate <= '${fechaHasta}' STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+    );
+    const page = result.QueryResponse?.Invoice ?? [];
+    invoices.push(...page);
+    if (page.length < pageSize) break;
+    startPosition += pageSize;
+  }
+  return invoices;
+}
+
 /** Trae todos los Items (productos/servicios) activos. */
 export async function getAllItems() {
   const items = [];

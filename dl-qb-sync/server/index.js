@@ -31,6 +31,7 @@ import {
   deleteResidual,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
+import { calcularComisiones, construirExcelComisiones } from './sync/comisiones.js';
 import {
   getAuthorizeUri,
   handleOAuthCallback,
@@ -598,6 +599,33 @@ app.delete('/api/residuales/:id', async (req, res) => {
   try {
     await deleteResidual(req.params.id);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Reporte de Comisiones (solo lectura de QuickBooks, no escribe nada) ---
+app.get('/api/comisiones', async (req, res) => {
+  try {
+    const { desde, hasta } = req.query ?? {};
+    if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
+    res.json(await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/comisiones/descargar', async (req, res) => {
+  try {
+    const { desde, hasta } = req.query ?? {};
+    if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
+    const resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta });
+    const buffer = construirExcelComisiones(resultado);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="comisiones-${desde}-a-${hasta}.xlsx"`);
+    res.send(buffer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

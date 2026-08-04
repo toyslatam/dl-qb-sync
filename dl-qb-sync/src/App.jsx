@@ -8,9 +8,11 @@ import SyncPanel from './components/SyncPanel.jsx';
 import DoctoresModule from './components/DoctoresModule.jsx';
 import MasterModule from './components/MasterModule.jsx';
 import ResidualesModule from './components/ResidualesModule.jsx';
+import ComisionesModule from './components/ComisionesModule.jsx';
 
 const MODULOS = [
   { key: 'facturas', label: 'Facturas de Venta' },
+  { key: 'comisiones', label: 'Comisiones' },
   { key: 'doctores', label: 'Doctores' },
   { key: 'master', label: 'Master' },
   { key: 'residuales', label: 'Residuales' },
@@ -96,6 +98,7 @@ export default function App() {
       {modulo === 'doctores' && <DoctoresModule />}
       {modulo === 'master' && <MasterModule />}
       {modulo === 'residuales' && <ResidualesModule />}
+      {modulo === 'comisiones' && <ComisionesModule />}
 
       {showSync && (
         <div className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-6" onClick={() => setShowSync(false)}>
