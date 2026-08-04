@@ -27,7 +27,7 @@ export default function Login() {
           <img src="/dental-one-logo.jpg" alt="Dental One" className="h-32 w-auto object-contain" />
         </div>
 
-        <h1 className="mb-6 text-center text-base font-bold tracking-tight text-slate-900">Dentalink → QuickBooks</h1>
+        <h1 className="mb-6 text-center text-2xl font-extrabold tracking-tight text-slate-900">Dental Quick</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
