@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { HeartPulse, Pencil, Check, X, Loader2, Plus, Trash2 } from 'lucide-react';
+import { HeartPulse, Pencil, Check, Loader2, Plus, Trash2, Search, UserRound } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
+import { Modal } from './ui/Modal.jsx';
+import EntitySearchBox from './EntitySearchBox.jsx';
 
 async function api(path, options) {
   const res = await apiFetch(path, options);
@@ -25,6 +27,55 @@ function calcular({ montoResidual, descuentoPct, comisionPct }) {
   const final = residual - descTC;
   const paraPagar = final * num(comisionPct);
   return { descTC, final, paraPagar };
+}
+
+function valoresDesde(caso) {
+  return {
+    paciente: caso?.paciente ?? '',
+    doctorId: caso?.doctor_id ?? null,
+    abonos: caso?.abonos?.length ? caso.abonos : [{ nombre: 'Abono 1', monto: '' }],
+    montoResidual: caso?.monto_residual ?? '',
+    descuentoPct: caso?.descuento_pct ?? 0.027,
+    comisionPct: caso?.comision_pct ?? 0,
+  };
+}
+
+/** Buscador de paciente contra QuickBooks: muestra el nombre elegido, con boton para buscar/cambiar. */
+function PacientePicker({ valor, onElegir }) {
+  const [buscando, setBuscando] = useState(false);
+
+  if (buscando) {
+    return (
+      <div>
+        <EntitySearchBox
+          endpoint="/api/qbo/customers/buscar"
+          labelKey="DisplayName"
+          placeholder="Buscar cliente en QuickBooks…"
+          onPick={(c) => {
+            onElegir(c.DisplayName);
+            setBuscando(false);
+          }}
+          autoFocus
+        />
+        <button onClick={() => setBuscando(false)} className="mt-1.5 text-[0.78rem] text-slate-400 hover:text-slate-600">
+          Cancelar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`${inputClass} flex flex-1 items-center gap-2 text-slate-700`}>
+        <UserRound size={14} className="shrink-0 text-slate-400" />
+        <span className="truncate">{valor || 'Sin paciente elegido'}</span>
+      </div>
+      <Button variant="secondary" size="md" onClick={() => setBuscando(true)}>
+        <Search size={14} />
+        Buscar
+      </Button>
+    </div>
+  );
 }
 
 function ResidualForm({ valores, onChange, doctores }) {
@@ -57,27 +108,28 @@ function ResidualForm({ valores, onChange, doctores }) {
   const { descTC, final, paraPagar } = calcular(valores);
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <input
-          className={inputClass}
-          placeholder="Paciente"
-          value={valores.paciente}
-          onChange={(e) => setCampo('paciente', e.target.value)}
-        />
-        <select className={inputClass} value={valores.doctorId ?? ''} onChange={(e) => elegirDoctor(e.target.value || null)}>
-          <option value="">(elegir doctor)</option>
-          {doctores.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.titulo} {d.nombre} {d.apellido}
-            </option>
-          ))}
-        </select>
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Paciente</span>
+          <PacientePicker valor={valores.paciente} onElegir={(nombre) => setCampo('paciente', nombre)} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Doctor</span>
+          <select className={inputClass} value={valores.doctorId ?? ''} onChange={(e) => elegirDoctor(e.target.value || null)}>
+            <option value="">(elegir doctor)</option>
+            {doctores.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.titulo} {d.nombre} {d.apellido}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div>
-        <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Abonos (soporte/detalle)</p>
-        <div className="space-y-1.5">
+        <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Abonos (soporte/detalle)</p>
+        <div className="space-y-2">
           {valores.abonos.map((abono, i) => (
             <div key={i} className="flex gap-2">
               <input
@@ -87,7 +139,7 @@ function ResidualForm({ valores, onChange, doctores }) {
               />
               <input
                 type="number"
-                className={`${inputClass} w-32`}
+                className={`${inputClass} w-36`}
                 placeholder="Monto"
                 value={abono.monto}
                 onChange={(e) => actualizarAbono(i, 'monto', e.target.value)}
@@ -98,16 +150,16 @@ function ResidualForm({ valores, onChange, doctores }) {
             </div>
           ))}
         </div>
-        <div className="mt-1.5 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={agregarAbono}>
             <Plus size={14} />
             Agregar abono
           </Button>
-          <span className="text-[0.78rem] text-slate-400">Suma abonos: ${sumaAbonos.toFixed(2)}</span>
+          <span className="text-[0.8rem] text-slate-400">Suma abonos: ${sumaAbonos.toFixed(2)}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Monto Residual</span>
           <input
@@ -138,91 +190,19 @@ function ResidualForm({ valores, onChange, doctores }) {
         </label>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center">
+      <div className="grid grid-cols-3 gap-3 rounded-xl bg-slate-50 p-4 text-center">
         <div>
-          <p className="text-[0.7rem] text-slate-400">Desc. T/C</p>
-          <p className="text-sm font-semibold text-slate-700">${descTC.toFixed(2)}</p>
-        </div>
-        <div>
-          <p className="text-[0.7rem] text-slate-400">Final</p>
-          <p className="text-sm font-semibold text-slate-700">${final.toFixed(2)}</p>
+          <p className="text-[0.72rem] text-slate-400">Desc. T/C</p>
+          <p className="text-base font-semibold text-slate-700">${descTC.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-[0.7rem] text-slate-400">Para Pagar</p>
-          <p className="text-sm font-bold text-primary">${paraPagar.toFixed(2)}</p>
+          <p className="text-[0.72rem] text-slate-400">Final</p>
+          <p className="text-base font-semibold text-slate-700">${final.toFixed(2)}</p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function valoresDesde(caso) {
-  return {
-    paciente: caso?.paciente ?? '',
-    doctorId: caso?.doctor_id ?? null,
-    abonos: caso?.abonos?.length ? caso.abonos : [{ nombre: 'Abono 1', monto: '' }],
-    montoResidual: caso?.monto_residual ?? '',
-    descuentoPct: caso?.descuento_pct ?? 0.027,
-    comisionPct: caso?.comision_pct ?? 0,
-  };
-}
-
-function ResidualRow({ caso, doctores, onGuardar, onEliminar }) {
-  const [editando, setEditando] = useState(false);
-  const [valores, setValores] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  function empezarEdicion() {
-    setValores(valoresDesde(caso));
-    setEditando(true);
-  }
-
-  async function guardar() {
-    setBusy(true);
-    try {
-      await onGuardar(caso.id, valores);
-      setEditando(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const { paraPagar } = calcular(valoresDesde(caso));
-  const doctorLabel = caso.doctores ? `${caso.doctores.titulo} ${caso.doctores.nombre} ${caso.doctores.apellido}` : '(sin doctor)';
-
-  if (editando) {
-    return (
-      <div className="rounded-xl border border-primary/30 bg-primary-light/40 p-3">
-        <ResidualForm valores={valores} onChange={setValores} doctores={doctores} />
-        <div className="mt-3 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditando(false)} disabled={busy}>
-            <X size={14} />
-            Cancelar
-          </Button>
-          <Button variant="primary" size="sm" onClick={guardar} disabled={busy}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            Guardar
-          </Button>
+        <div>
+          <p className="text-[0.72rem] text-slate-400">Para Pagar</p>
+          <p className="text-lg font-bold text-primary">${paraPagar.toFixed(2)}</p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2.5 hover:border-slate-200">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-800">{caso.paciente}</p>
-        <p className="truncate text-[0.78rem] text-slate-400">{doctorLabel}</p>
-      </div>
-      <span className="text-sm font-bold text-primary">${paraPagar.toFixed(2)}</span>
-      <div className="flex shrink-0 items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={empezarEdicion}>
-          <Pencil size={14} />
-          Editar
-        </Button>
-        <button onClick={() => onEliminar(caso.id)} className="flex h-9 w-9 items-center justify-center text-slate-300 hover:text-danger">
-          <Trash2 size={15} />
-        </button>
       </div>
     </div>
   );
@@ -233,9 +213,10 @@ export default function ResidualesModule() {
   const [doctores, setDoctores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [agregando, setAgregando] = useState(false);
-  const [nuevo, setNuevo] = useState(valoresDesde(null));
-  const [busyNuevo, setBusyNuevo] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [editandoId, setEditandoId] = useState(null); // null = creando
+  const [valores, setValores] = useState(valoresDesde(null));
+  const [busy, setBusy] = useState(false);
 
   function cargar() {
     setLoading(true);
@@ -250,30 +231,37 @@ export default function ResidualesModule() {
 
   useEffect(cargar, []);
 
-  async function guardarCaso(id, valores) {
-    setError('');
-    try {
-      await api(`/api/residuales/${id}`, { method: 'PATCH', body: JSON.stringify(valores) });
-      cargar();
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
+  function abrirNuevo() {
+    setEditandoId(null);
+    setValores(valoresDesde(null));
+    setModalAbierto(true);
   }
 
-  async function agregarCaso() {
-    if (!nuevo.paciente.trim()) return;
-    setBusyNuevo(true);
+  function abrirEdicion(caso) {
+    setEditandoId(caso.id);
+    setValores(valoresDesde(caso));
+    setModalAbierto(true);
+  }
+
+  async function guardar() {
+    if (!valores.paciente.trim()) {
+      setError('Elige un paciente');
+      return;
+    }
+    setBusy(true);
     setError('');
     try {
-      await api('/api/residuales', { method: 'POST', body: JSON.stringify(nuevo) });
-      setNuevo(valoresDesde(null));
-      setAgregando(false);
+      if (editandoId) {
+        await api(`/api/residuales/${editandoId}`, { method: 'PATCH', body: JSON.stringify(valores) });
+      } else {
+        await api('/api/residuales', { method: 'POST', body: JSON.stringify(valores) });
+      }
+      setModalAbierto(false);
       cargar();
     } catch (err) {
       setError(err.message);
     } finally {
-      setBusyNuevo(false);
+      setBusy(false);
     }
   }
 
@@ -284,7 +272,7 @@ export default function ResidualesModule() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>
@@ -293,61 +281,86 @@ export default function ResidualesModule() {
               Residuales de Ortodoncia
             </span>
           </CardTitle>
-          <span className="text-[0.78rem] text-slate-400">{casos.length} caso(s)</span>
+          <Button variant="primary" size="md" onClick={abrirNuevo}>
+            <Plus size={15} />
+            Agregar caso
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-slate-500">
-            Para casos como abonos de Invisalign donde queda un residual pendiente de comisionar. El monto residual y los
-            abonos se escriben a mano (es una reconciliación caso por caso); el descuento, el final y la comisión a pagar se
-            calculan solos.
+            Para casos como abonos de Invisalign donde queda un residual pendiente de comisionar.
           </p>
 
-          {error && <p className="text-sm font-medium text-danger">{error}</p>}
+          {error && !modalAbierto && <p className="text-sm font-medium text-danger">{error}</p>}
 
           {loading ? (
             <div className="space-y-2">
               {[0, 1].map((i) => (
-                <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+                <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
               ))}
             </div>
+          ) : casos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">Sin casos residuales todavía.</p>
           ) : (
-            <div className="space-y-2">
-              {casos.map((c) => (
-                <ResidualRow key={c.id} caso={c} doctores={doctores} onGuardar={guardarCaso} onEliminar={eliminarCaso} />
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[0.7rem] uppercase tracking-wide text-slate-400">
+                    <th className="pb-2 pr-3">Paciente</th>
+                    <th className="pb-2 pr-3">Doctor</th>
+                    <th className="pb-2 pr-3 text-right">Residual</th>
+                    <th className="pb-2 pr-3 text-right">Para Pagar</th>
+                    <th className="pb-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {casos.map((c) => {
+                    const { paraPagar } = calcular(valoresDesde(c));
+                    const doctorLabel = c.doctores ? `${c.doctores.titulo} ${c.doctores.nombre} ${c.doctores.apellido}` : '—';
+                    return (
+                      <tr key={c.id} className="border-t border-slate-100">
+                        <td className="py-2 pr-3 font-medium text-slate-800">{c.paciente}</td>
+                        <td className="py-2 pr-3 text-slate-600">{doctorLabel}</td>
+                        <td className="py-2 pr-3 text-right text-slate-600">${Number(c.monto_residual).toFixed(2)}</td>
+                        <td className="py-2 pr-3 text-right font-semibold text-primary">${paraPagar.toFixed(2)}</td>
+                        <td className="py-2 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => abrirEdicion(c)}>
+                              <Pencil size={13} />
+                            </Button>
+                            <button onClick={() => eliminarCaso(c.id)} className="flex h-8 w-8 items-center justify-center text-slate-300 hover:text-danger">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-
-          {agregando ? (
-            <div className="rounded-xl border border-primary/30 bg-primary-light/40 p-3">
-              <ResidualForm valores={nuevo} onChange={setNuevo} doctores={doctores} />
-              <div className="mt-3 flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setAgregando(false);
-                    setNuevo(valoresDesde(null));
-                  }}
-                  disabled={busyNuevo}
-                >
-                  <X size={14} />
-                  Cancelar
-                </Button>
-                <Button variant="primary" size="sm" onClick={agregarCaso} disabled={busyNuevo}>
-                  {busyNuevo ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Guardar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button variant="secondary" size="md" onClick={() => setAgregando(true)}>
-              <Plus size={15} />
-              Agregar caso residual
-            </Button>
           )}
         </CardContent>
       </Card>
+
+      <Modal
+        open={modalAbierto}
+        onClose={() => setModalAbierto(false)}
+        title={editandoId ? 'Editar caso residual' : 'Nuevo caso residual'}
+        maxWidth="max-w-3xl"
+      >
+        <ResidualForm valores={valores} onChange={setValores} doctores={doctores} />
+        {error && <p className="mt-3 text-sm font-medium text-danger">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <Button variant="ghost" size="md" onClick={() => setModalAbierto(false)} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button variant="primary" size="md" onClick={guardar} disabled={busy}>
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            Guardar
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

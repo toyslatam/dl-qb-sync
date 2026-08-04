@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Download, Loader2, AlertTriangle } from 'lucide-react';
+import { Calculator, Download, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
@@ -124,33 +124,6 @@ export default function ComisionesModule() {
               ))}
             </CardContent>
           </Card>
-
-          {resultado.sinIdentificar.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <span className="flex items-center gap-2 text-warning">
-                    <AlertTriangle size={16} />
-                    Facturas sin doctor identificado ({resultado.sinIdentificar.length})
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                <p className="mb-2 text-sm text-slate-500">
-                  La "Nota para cliente" de estas facturas no coincide con ningún doctor del catálogo — revisa la nota o
-                  agrega el doctor en la pestaña Doctores.
-                </p>
-                {resultado.sinIdentificar.map((s) => (
-                  <div key={s.idFactura} className="rounded-xl border border-amber-100 bg-warning-light/40 px-3 py-2 text-sm">
-                    <span className="font-medium text-slate-800">#{s.docNumber}</span>{' '}
-                    <span className="text-slate-500">
-                      {s.fecha} · {s.paciente} · nota: "{s.notaCliente || '(vacía)'}" · ${Number(s.total).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
           <Card>
             <CardHeader>
