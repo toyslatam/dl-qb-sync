@@ -260,4 +260,46 @@ export async function deleteResidual(id) {
   assertOk(error, 'deleteResidual');
 }
 
+// --- Clientes relacionados (facturar un paciente bajo otro Customer de QuickBooks) ---
+
+export async function getRelaciones() {
+  const { data, error } = await supabase.from('clientes_relacionados').select('*').order('nombre_paciente', { ascending: true });
+  assertOk(error, 'getRelaciones');
+  return data ?? [];
+}
+
+/** Usado por invoiceSync: si existe, tiene prioridad sobre el match normal por Suffix. */
+export async function findRelacion(idPacienteDentalink) {
+  const { data, error } = await supabase
+    .from('clientes_relacionados')
+    .select('*')
+    .eq('id_paciente_dentalink', String(idPacienteDentalink))
+    .maybeSingle();
+  assertOk(error, 'findRelacion');
+  return data ?? null;
+}
+
+export async function upsertRelacion({ idPacienteDentalink, nombrePaciente, qbCustomerId, qbDisplayName }) {
+  const { data, error } = await supabase
+    .from('clientes_relacionados')
+    .upsert(
+      {
+        id_paciente_dentalink: String(idPacienteDentalink),
+        nombre_paciente: nombrePaciente,
+        qb_customer_id: qbCustomerId,
+        qb_display_name: qbDisplayName,
+      },
+      { onConflict: 'id_paciente_dentalink' }
+    )
+    .select()
+    .single();
+  assertOk(error, 'upsertRelacion');
+  return data;
+}
+
+export async function deleteRelacion(id) {
+  const { error } = await supabase.from('clientes_relacionados').delete().eq('id', id);
+  assertOk(error, 'deleteRelacion');
+}
+
 export default supabase;

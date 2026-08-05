@@ -9,6 +9,7 @@ import {
   HeartPulse,
   RefreshCcw,
   LogOut,
+  Link2,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -21,6 +22,7 @@ const NAV = [
 const CONFIG_SUBNAV = [
   { key: 'master', label: 'Master', icon: Landmark },
   { key: 'residuales', label: 'Residuales', icon: HeartPulse },
+  { key: 'relacionados', label: 'Relacionados', icon: Link2 },
 ];
 
 function NavButton({ item, active, onClick, indent }) {

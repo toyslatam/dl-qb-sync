@@ -2,7 +2,7 @@ import { getPagos, getPagosByPaciente, getPagoPorId, getTratamientosByPaciente, 
 import { createInvoice } from '../integrations/quickbooks.js';
 import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
-import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem } from '../db/store.js';
+import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem, findRelacion } from '../db/store.js';
 
 // Mapeos identicos al flujo de Power Automate ya usado por esta empresa en QuickBooks.
 const PAYMENT_METHOD_IDS = {
@@ -137,8 +137,19 @@ function sugerirDoctor(lineas, pago) {
   return deLineas;
 }
 
+/**
+ * Si el paciente esta marcado como "relacionado" (debe facturarse bajo otro
+ * Customer, ej. un dependiente de una cuenta familiar), esa relacion tiene
+ * prioridad sobre el match normal por Suffix en customer_index.
+ */
+async function resolveCustomerMatch(idPaciente) {
+  const relacion = await findRelacion(idPaciente);
+  if (relacion) return { qbCustomerId: relacion.qb_customer_id, qbDisplayName: relacion.qb_display_name };
+  return matchCustomer(idPaciente);
+}
+
 async function buildDraft(idPaciente, pago, lineas) {
-  const customerMatch = await matchCustomer(idPaciente);
+  const customerMatch = await resolveCustomerMatch(idPaciente);
   // N. de factura = numero de pago de Dentalink (pedido explicito del cliente).
   // El resto (tracking number, referencia del deposito) sigue usando la
   // boleta/folio, como siempre.

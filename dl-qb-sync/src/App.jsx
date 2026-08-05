@@ -8,6 +8,7 @@ import SyncPanel from './components/SyncPanel.jsx';
 import DoctoresModule from './components/DoctoresModule.jsx';
 import MasterModule from './components/MasterModule.jsx';
 import ResidualesModule from './components/ResidualesModule.jsx';
+import RelacionadosModule from './components/RelacionadosModule.jsx';
 import ComisionesModule from './components/ComisionesModule.jsx';
 import ResumenFacturasModule from './components/ResumenFacturasModule.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -64,6 +65,7 @@ export default function App() {
             {modulo === 'doctores' && <DoctoresModule />}
             {modulo === 'master' && <MasterModule />}
             {modulo === 'residuales' && <ResidualesModule />}
+            {modulo === 'relacionados' && <RelacionadosModule />}
           </div>
         </main>
       </div>

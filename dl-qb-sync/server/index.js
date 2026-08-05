@@ -29,6 +29,9 @@ import {
   createResidual,
   updateResidual,
   deleteResidual,
+  getRelaciones,
+  upsertRelacion,
+  deleteRelacion,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones } from './sync/comisiones.js';
@@ -44,6 +47,7 @@ import {
   getPaymentMethods,
   getDepositAccounts,
 } from './integrations/quickbooks.js';
+import { getPaciente } from './integrations/dentalink.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -598,6 +602,86 @@ app.patch('/api/residuales/:id', async (req, res) => {
 app.delete('/api/residuales/:id', async (req, res) => {
   try {
     await deleteResidual(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Clientes relacionados (facturar un paciente bajo otro Customer de QuickBooks) ---
+app.get('/api/relacionados', async (_req, res) => {
+  try {
+    res.json(await getRelaciones());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trae un paciente puntual de Dentalink por id, para confirmar el nombre antes de relacionarlo.
+app.get('/api/dentalink/pacientes/:id', async (req, res) => {
+  try {
+    const paciente = await getPaciente(req.params.id);
+    if (!paciente || paciente.error || !paciente.id) {
+      return res.status(404).json({ error: 'Paciente no encontrado en Dentalink' });
+    }
+    res.json(paciente);
+  } catch (err) {
+    console.error(err);
+    res.status(404).json({ error: 'Paciente no encontrado en Dentalink' });
+  }
+});
+
+// Relacionar un paciente con un Customer de QuickBooks ya existente.
+app.post('/api/relacionados', async (req, res) => {
+  try {
+    const { idPacienteDentalink, nombrePaciente, qbCustomerId, qbDisplayName } = req.body ?? {};
+    if (!idPacienteDentalink || !qbCustomerId) {
+      return res.status(400).json({ error: 'idPacienteDentalink y qbCustomerId son requeridos' });
+    }
+    const relacion = await upsertRelacion({
+      idPacienteDentalink,
+      nombrePaciente: nombrePaciente ?? '',
+      qbCustomerId,
+      qbDisplayName: qbDisplayName ?? '',
+    });
+    res.json(relacion);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear un Customer nuevo en QuickBooks (Nombre completo, Correo, RUC en AlternatePhone) y
+// relacionarlo con el paciente, en un solo paso.
+app.post('/api/relacionados/crear-cliente', async (req, res) => {
+  try {
+    const { idPacienteDentalink, nombrePaciente, nombreCompleto, correo, ruc } = req.body ?? {};
+    if (!idPacienteDentalink || !nombreCompleto) {
+      return res.status(400).json({ error: 'idPacienteDentalink y nombreCompleto son requeridos' });
+    }
+    const payload = { DisplayName: nombreCompleto };
+    if (correo) payload.PrimaryEmailAddr = { Address: correo };
+    if (ruc) payload.AlternatePhone = { FreeFormNumber: ruc };
+
+    const created = await createCustomer(payload);
+    const relacion = await upsertRelacion({
+      idPacienteDentalink,
+      nombrePaciente: nombrePaciente ?? '',
+      qbCustomerId: created.Customer.Id,
+      qbDisplayName: created.Customer.DisplayName,
+    });
+    res.json(relacion);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/relacionados/:id', async (req, res) => {
+  try {
+    await deleteRelacion(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

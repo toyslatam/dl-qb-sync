@@ -101,6 +101,19 @@ create table if not exists residuales_ortodoncia (
   updated_at timestamptz not null default now()
 );
 
+-- Pacientes que no se facturan a si mismos, sino bajo otro Customer de
+-- QuickBooks (ej. dependientes de una cuenta familiar). Cuando existe una
+-- fila aca para un paciente, tiene prioridad sobre el match normal por
+-- Suffix (customer_index) al armar el borrador de la factura.
+create table if not exists clientes_relacionados (
+  id bigint generated always as identity primary key,
+  id_paciente_dentalink text not null unique,
+  nombre_paciente text not null,
+  qb_customer_id text not null,
+  qb_display_name text not null,
+  created_at timestamptz not null default now()
+);
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -112,3 +125,4 @@ alter table oauth_tokens enable row level security;
 alter table doctores enable row level security;
 alter table metodos_pago_descuento enable row level security;
 alter table residuales_ortodoncia enable row level security;
+alter table clientes_relacionados enable row level security;
