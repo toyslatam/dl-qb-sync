@@ -110,6 +110,33 @@ function doctorMasFrecuente(lineas) {
   return mejor;
 }
 
+// Para especialistas, Dentalink no registra al dentista real como
+// "dentista_realizador" -- registra la especialidad (ej. "Especialista
+// Periodoncia"), asi que ese valor no sirve como nombre de doctor.
+function pareceEspecialidad(nombre) {
+  return /especialista/i.test(nombre ?? '');
+}
+
+function esSoloNumero(texto) {
+  return /^\d+$/.test((texto ?? '').trim());
+}
+
+/**
+ * Sugerencia de doctor para la Nota del cliente: normalmente el dentista que
+ * realizo la prestacion. Pero cuando ese campo sale como una especialidad
+ * generica (caso de los especialistas), el nombre real del doctor a veces
+ * quedo escrito a mano en el campo de referencia del pago en Dentalink (el
+ * mismo que antes usabamos para la nota) -- se usa ese en su lugar, salvo que
+ * sea solo un numero (una referencia de verdad, no un nombre).
+ */
+function sugerirDoctor(lineas, pago) {
+  const deLineas = doctorMasFrecuente(lineas);
+  if (pareceEspecialidad(deLineas) && pago.numero_referencia && !esSoloNumero(pago.numero_referencia)) {
+    return pago.numero_referencia.trim();
+  }
+  return deLineas;
+}
+
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await matchCustomer(idPaciente);
   // N. de factura = numero de pago de Dentalink (pedido explicito del cliente).
@@ -143,7 +170,7 @@ async function buildDraft(idPaciente, pago, lineas) {
       // Nota para cliente = nombre del doctor (asi lo lee el modulo de
       // Comisiones). Se sugiere el dentista que mas se repite entre las
       // lineas de Dentalink; el usuario confirma o cambia antes de crear.
-      customerMemo: doctorMasFrecuente(lineas) ?? '',
+      customerMemo: sugerirDoctor(lineas, pago) ?? '',
       taxCodeRef: TAX_CODE_ID,
     },
     // Datos del deposito/pago que se registra al mismo tiempo que la factura.
