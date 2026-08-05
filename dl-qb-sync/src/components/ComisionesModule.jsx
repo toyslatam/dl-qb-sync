@@ -332,18 +332,8 @@ export default function ComisionesModule() {
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
       {resultado?.laboratorioError && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-warning-light px-3 py-2.5 text-sm">
-          <span className="text-slate-700">
-            <strong>Laboratorios en $0:</strong> QuickBooks #2 todavía no está conectado ({resultado.laboratorioError}).
-          </span>
-          <a
-            href="/api/qbo2/connect"
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 rounded-lg bg-white px-3 py-1.5 font-medium text-primary shadow-card hover:bg-primary-light"
-          >
-            Conectar QuickBooks #2
-          </a>
+        <div className="rounded-xl border border-amber-200 bg-warning-light px-3 py-2.5 text-sm text-slate-700">
+          <strong>Laboratorios en $0:</strong> no se pudo leer la cuenta de Laboratorios de QuickBooks ({resultado.laboratorioError}).
         </div>
       )}
 

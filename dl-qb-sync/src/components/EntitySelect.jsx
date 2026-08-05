@@ -6,22 +6,35 @@ import SearchableSelect from './ui/SearchableSelect.jsx';
 export default function EntitySelect({ endpoint, value, onChange, placeholder, className = '' }) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
+    setError('');
     apiFetch(endpoint)
-      .then((res) => res.json())
-      .then(setOptions)
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.error || `Error ${res.status}`);
+        setOptions(Array.isArray(body) ? body : []);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setOptions([]);
+      })
       .finally(() => setLoading(false));
   }, [endpoint]);
 
   return (
-    <SearchableSelect
-      options={options.map((o) => ({ value: o.Id, label: o.Name }))}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder || '(sin seleccionar)'}
-      loading={loading}
-      className={className}
-    />
+    <div>
+      <SearchableSelect
+        options={options.map((o) => ({ value: o.Id, label: o.Name }))}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder || '(sin seleccionar)'}
+        loading={loading}
+        className={className}
+      />
+      {error && <p className="mt-1 text-[0.75rem] font-medium text-danger">{error}</p>}
+    </div>
   );
 }

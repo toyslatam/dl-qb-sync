@@ -96,24 +96,40 @@ async function refreshWithIntuit(refreshToken) {
   return res.json();
 }
 
+/**
+ * Intuit rota el refresh_token en cada uso, y esta app puede correr en mas de
+ * un proceso a la vez (produccion + una corrida local, por ejemplo). Si dos
+ * procesos refrescan casi al mismo tiempo, el refresh_token que uno tenga en
+ * memoria puede quedar invalidado por el otro. Por eso Supabase (fuente
+ * compartida entre todas las instancias) se intenta SIEMPRE primero, y el
+ * valor en memoria de esta instancia queda solo como respaldo -- antes era al
+ * reves, lo que dejaba una instancia reintentando para siempre con un token
+ * ya invalido sin volver a mirar el mas reciente.
+ */
 async function ensureAccessToken() {
   if (cachedToken && cachedToken.expires_at > Date.now() + 30_000) {
     return cachedToken.access_token;
   }
 
-  const rawRefreshToken =
-    cachedToken?.refresh_token || (await getSetting(REFRESH_TOKEN_KEY)) || process.env.QBO_REFRESH_TOKEN;
-  if (!rawRefreshToken) {
+  const candidatos = [...new Set([await getSetting(REFRESH_TOKEN_KEY), cachedToken?.refresh_token, process.env.QBO_REFRESH_TOKEN].filter(Boolean))];
+  if (candidatos.length === 0) {
     throw new Error(
       'No hay refresh token de QuickBooks disponible. Completa el login OAuth en /api/qbo/connect primero.'
     );
   }
-  const refreshToken = rawRefreshToken.trim();
 
-  const token = await refreshWithIntuit(refreshToken);
-  cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
-  await setSetting(REFRESH_TOKEN_KEY, token.refresh_token);
-  return cachedToken.access_token;
+  let ultimoError;
+  for (const candidato of candidatos) {
+    try {
+      const token = await refreshWithIntuit(candidato.trim());
+      cachedToken = { ...token, expires_at: Date.now() + token.expires_in * 1000 };
+      await setSetting(REFRESH_TOKEN_KEY, token.refresh_token);
+      return cachedToken.access_token;
+    } catch (err) {
+      ultimoError = err;
+    }
+  }
+  throw ultimoError;
 }
 
 async function qboFetch(path, { method = 'GET', body } = {}) {
@@ -175,6 +191,52 @@ export async function getInvoicesByDateRange(fechaDesde, fechaHasta) {
     startPosition += pageSize;
   }
   return invoices;
+}
+
+const CUENTA_LABORATORIO = (process.env.QBO_CUENTA_LABORATORIO || 'Laboratorios').trim();
+
+/**
+ * Trae los costos de laboratorio (Bills/facturas de proveedor) de un rango de
+ * fechas, filtrados a la cuenta de costo de laboratorio configurada
+ * (QBO_CUENTA_LABORATORIO). Solo lectura -- para el modulo de Comisiones.
+ * Antes esto vivia en una segunda QuickBooks (quickbooks2.js); ahora la
+ * cuenta de Laboratorios tambien existe en esta misma compania.
+ */
+export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
+  const bills = [];
+  let startPosition = 1;
+  const pageSize = 100;
+  while (true) {
+    const result = await qboQuery(
+      `select * from Bill where TxnDate >= '${fechaDesde}' and TxnDate <= '${fechaHasta}' STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+    );
+    const page = result.QueryResponse?.Bill ?? [];
+    bills.push(...page);
+    if (page.length < pageSize) break;
+    startPosition += pageSize;
+  }
+
+  const costos = [];
+  for (const bill of bills) {
+    for (const linea of bill.Line ?? []) {
+      const detalle = linea.AccountBasedExpenseLineDetail ?? linea.ItemBasedExpenseLineDetail;
+      const cuentaNombre = detalle?.AccountRef?.name ?? detalle?.ItemRef?.name ?? '';
+      if (!cuentaNombre.includes(CUENTA_LABORATORIO)) continue;
+
+      costos.push({
+        idBill: bill.Id,
+        numero: bill.DocNumber ?? bill.Id,
+        fecha: bill.TxnDate,
+        proveedor: bill.VendorRef?.name ?? '',
+        paciente: detalle?.CustomerRef?.name ?? '',
+        // Texto libre (no estructurado) que suele incluir el doctor -- QuickBooks
+        // no expone custom fields en Bill/Purchase via API, solo en Invoice.
+        doctorTexto: linea.Description ?? '',
+        monto: Number(linea.Amount ?? 0),
+      });
+    }
+  }
+  return costos;
 }
 
 /** Trae todos los Items (productos/servicios) activos. */

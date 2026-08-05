@@ -1,6 +1,5 @@
 import XLSX from 'xlsx';
-import { getInvoicesByDateRange } from '../integrations/quickbooks.js';
-import { getCostosLaboratorio } from '../integrations/quickbooks2.js';
+import { getInvoicesByDateRange, getCostosLaboratorio } from '../integrations/quickbooks.js';
 import { getDoctores, getMetodosPagoDescuento, getResiduales } from '../db/store.js';
 
 /** Separa "Francisco SousaLennox" en { nombre: 'Francisco', apellido: 'SousaLennox' } (primer espacio). */

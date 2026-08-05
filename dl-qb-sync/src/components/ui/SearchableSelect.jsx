@@ -14,12 +14,17 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const raiz = useRef(null);
   const inputRef = useRef(null);
 
-  const seleccionado = options.find((o) => String(o.value) === String(value));
+  // Defensivo: si algo aguas arriba entrega un error en vez de una lista
+  // (ej. un endpoint que responde 500), esto no debe tumbar toda la app.
+  const opcionesSeguras = Array.isArray(options) ? options : [];
+
+  const seleccionado = opcionesSeguras.find((o) => String(o.value) === String(value));
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q));
+    if (!q) return opcionesSeguras;
+    return opcionesSeguras.filter((o) => o.label.toLowerCase().includes(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options, busqueda]);
 
   useEffect(() => {
