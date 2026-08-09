@@ -1,5 +1,5 @@
 import XLSX from 'xlsx';
-import { getInvoicesByDateRange, getCostosLaboratorio } from '../integrations/quickbooks.js';
+import { getInvoicesByDateRange, getCostosOperativos } from '../integrations/quickbooks.js';
 import { getDoctores, getMetodosPagoDescuento, getResiduales } from '../db/store.js';
 
 /** Separa "Francisco SousaLennox" en { nombre: 'Francisco', apellido: 'SousaLennox' } (primer espacio). */
@@ -23,7 +23,13 @@ function normalizar(texto) {
  * de fechas, leyendo SOLO de QuickBooks (facturas ya creadas) + los catalogos
  * de Doctores/Master/Residuales en Supabase. No escribe nada en QuickBooks.
  */
-export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesLaboratorio = {}, asignacionesDoctor = {} }) {
+export async function calcularComisiones({
+  fechaDesde,
+  fechaHasta,
+  asignacionesLaboratorio = {},
+  asignacionesInsumos = {},
+  asignacionesDoctor = {},
+}) {
   const [invoices, doctores, metodosPago, residuales] = await Promise.all([
     getInvoicesByDateRange(fechaDesde, fechaHasta),
     getDoctores(),
@@ -31,34 +37,41 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
     getResiduales(),
   ]);
 
-  // QuickBooks #2 (laboratorios) es opcional: si todavia no esta conectado,
-  // el reporte sigue funcionando con Laboratorios en $0 en vez de fallar.
+  // Si QuickBooks no responde por lo que sea, el reporte sigue funcionando
+  // con Laboratorios/Insumos en $0 en vez de fallar por completo.
   let costosLaboratorio = [];
-  let laboratorioError = null;
+  let costosInsumos = [];
+  let costosError = null;
   try {
-    costosLaboratorio = await getCostosLaboratorio(fechaDesde, fechaHasta);
+    ({ laboratorio: costosLaboratorio, insumos: costosInsumos } = await getCostosOperativos(fechaDesde, fechaHasta));
   } catch (err) {
-    laboratorioError = err.message;
+    costosError = err.message;
   }
   // Indice estable dentro de este calculo, para que el frontend pueda decir
   // "el costo #3 va a la factura X" sin depender de IDs internos de QBO.
   costosLaboratorio = costosLaboratorio.map((c, i) => ({ ...c, indice: i }));
+  costosInsumos = costosInsumos.map((c, i) => ({ ...c, indice: i }));
 
-  const laboratorioPorPaciente = new Map();
-  for (const costo of costosLaboratorio) {
-    const clave = normalizar(costo.paciente);
-    if (!clave) continue;
-    laboratorioPorPaciente.set(clave, (laboratorioPorPaciente.get(clave) ?? 0) + costo.monto);
+  function armarIndicesDeCosto(costos, asignaciones) {
+    const porPaciente = new Map();
+    for (const costo of costos) {
+      const clave = normalizar(costo.paciente);
+      if (!clave) continue;
+      porPaciente.set(clave, (porPaciente.get(clave) ?? 0) + costo.monto);
+    }
+    // idFactura (string) -> suma de costos asignados a mano.
+    const manualPorFactura = new Map();
+    for (const [indiceStr, idFactura] of Object.entries(asignaciones)) {
+      const costo = costos[Number(indiceStr)];
+      if (!costo || !idFactura) continue;
+      manualPorFactura.set(String(idFactura), (manualPorFactura.get(String(idFactura)) ?? 0) + costo.monto);
+    }
+    const asignadosManualmente = new Set(Object.keys(asignaciones).map(Number));
+    return { porPaciente, manualPorFactura, asignadosManualmente, usado: new Set() };
   }
-  // idFactura (string) -> suma de costos de laboratorio asignados a mano.
-  const laboratorioManualPorFactura = new Map();
-  for (const [indiceStr, idFactura] of Object.entries(asignacionesLaboratorio)) {
-    const costo = costosLaboratorio[Number(indiceStr)];
-    if (!costo || !idFactura) continue;
-    laboratorioManualPorFactura.set(String(idFactura), (laboratorioManualPorFactura.get(String(idFactura)) ?? 0) + costo.monto);
-  }
-  const indicesAsignadosManualmente = new Set(Object.keys(asignacionesLaboratorio).map(Number));
-  const laboratorioUsado = new Set();
+
+  const lab = armarIndicesDeCosto(costosLaboratorio, asignacionesLaboratorio);
+  const insumos = armarIndicesDeCosto(costosInsumos, asignacionesInsumos);
 
   const doctoresPorClave = new Map(doctores.map((d) => [`${normalizar(d.nombre)}|${normalizar(d.apellido)}`, d]));
   const doctoresPorId = new Map(doctores.map((d) => [String(d.id), d]));
@@ -127,10 +140,12 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
     const clavePaciente = normalizar(pacienteNombre);
     conteoPorPaciente.set(clavePaciente, (conteoPorPaciente.get(clavePaciente) ?? 0) + 1);
 
-    // La linea que absorbe el costo de Laboratorio de la factura: la primera
-    // que quedo con el mismo doctor del encabezado (si ninguna coincide, ese
-    // costo no se asigna en esta factura y queda pendiente de revision).
-    const idLineaLaboratorio = doctorEncabezado
+    // La linea que absorbe los costos de Laboratorio e Insumos de la
+    // factura: la primera que quedo con el mismo doctor del encabezado (si
+    // ninguna coincide, esos costos no se asignan en esta factura y quedan
+    // pendientes de revision). Ambos costos se atribuyen a la misma linea,
+    // nunca se reparten entre varias.
+    const idLineaPrincipal = doctorEncabezado
       ? lineasConDoctor.find((l) => l.doctor === doctorEncabezado)?.idLinea ?? null
       : null;
 
@@ -148,22 +163,28 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
         totalAsociado: l.monto,
         prestacion: l.prestacion,
         clavePaciente,
-        esLineaDeLaboratorio: l.idLinea === idLineaLaboratorio,
+        esLineaPrincipal: l.idLinea === idLineaPrincipal,
       });
     }
   }
 
+  function costoDeFactura(indices, p) {
+    const manual = indices.manualPorFactura.get(String(p.idFactura));
+    const pacienteUnico = conteoPorPaciente.get(p.clavePaciente) === 1;
+    const total = manual ?? (pacienteUnico ? indices.porPaciente.get(p.clavePaciente) ?? 0 : 0);
+    const monto = p.esLineaPrincipal ? total : 0;
+    if (monto) indices.usado.add(p.clavePaciente);
+    return monto;
+  }
+
   const filas = [];
   for (const p of prefilas) {
-    const manual = laboratorioManualPorFactura.get(String(p.idFactura));
-    const pacienteUnico = conteoPorPaciente.get(p.clavePaciente) === 1;
-    const laboratoriosFactura = manual ?? (pacienteUnico ? laboratorioPorPaciente.get(p.clavePaciente) ?? 0 : 0);
-    const laboratorios = p.esLineaDeLaboratorio ? laboratoriosFactura : 0;
-    if (laboratorios) laboratorioUsado.add(p.clavePaciente);
+    const laboratorios = costoDeFactura(lab, p);
+    const costoInsumos = costoDeFactura(insumos, p);
 
     const descuentoPct = descuentoPorMedio.get(p.medioPago) ?? 0;
     const descMP = p.totalAsociado * descuentoPct;
-    const base = p.totalAsociado - descMP - laboratorios;
+    const base = p.totalAsociado - descMP - laboratorios - costoInsumos;
     const comisionPct = p.doctor.comision_pct;
     const comisionAPagar = base * comisionPct;
 
@@ -185,6 +206,7 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
       descuentoMetodoPagoPct: descuentoPct,
       descMP,
       laboratorios,
+      insumos: costoInsumos,
       base,
       comisionPct,
       comisionAPagar,
@@ -222,12 +244,14 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
 
   const totalGeneral = resumen.reduce((sum, r) => sum + r.total, 0);
 
-  // Costos de laboratorio que quedan pendientes de revisar a mano: su
-  // paciente no matcheo ninguna factura, tenia mas de una factura en el
-  // rango (ambiguo), o simplemente no se le asigno todavia manualmente.
-  const laboratoriosPendientes = costosLaboratorio.filter(
-    (c) => !indicesAsignadosManualmente.has(c.indice) && !laboratorioUsado.has(normalizar(c.paciente))
-  );
+  // Costos que quedan pendientes de revisar a mano: su paciente no matcheo
+  // ninguna factura, tenia mas de una factura en el rango (ambiguo), o
+  // simplemente no se le asigno todavia manualmente.
+  function pendientes(costos, indices) {
+    return costos.filter((c) => !indices.asignadosManualmente.has(c.indice) && !indices.usado.has(normalizar(c.paciente)));
+  }
+  const laboratoriosPendientes = pendientes(costosLaboratorio, lab);
+  const insumosPendientes = pendientes(costosInsumos, insumos);
 
   return {
     filas,
@@ -235,7 +259,9 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
     sinIdentificar,
     costosLaboratorio,
     laboratoriosPendientes,
-    laboratorioError,
+    costosInsumos,
+    insumosPendientes,
+    costosError,
     totalGeneral,
     facturasEncontradas: invoices.length,
     doctoresDisponibles: doctores.map((d) => ({ id: d.id, titulo: d.titulo, nombre: d.nombre, apellido: d.apellido })),
@@ -256,6 +282,7 @@ const ENCABEZADOS = [
   '% Descuento Metodo Pago',
   'Desc MP',
   'Laboratorios',
+  'Insumos Médicos',
   'BASE',
   '% Comision',
   'COMISION A PAGAR',
@@ -279,6 +306,7 @@ export function construirExcelComisiones(resultado) {
     f.descuentoMetodoPagoPct,
     f.descMP,
     f.laboratorios,
+    f.insumos,
     f.base,
     f.comisionPct,
     f.comisionAPagar,
@@ -300,12 +328,17 @@ export function construirExcelComisiones(resultado) {
     ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
     ...resultado.laboratoriosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
   ]);
+  const wsInsumos = XLSX.utils.aoa_to_sheet([
+    ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
+    ...resultado.insumosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
+  ]);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsCalculo, 'ArchivoCalculo');
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
   XLSX.utils.book_append_sheet(wb, wsSinIdentificar, 'Sin identificar');
   XLSX.utils.book_append_sheet(wb, wsLaboratorios, 'Laboratorios sin asociar');
+  XLSX.utils.book_append_sheet(wb, wsInsumos, 'Insumos sin asociar');
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }

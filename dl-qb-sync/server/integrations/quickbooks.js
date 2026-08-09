@@ -194,15 +194,9 @@ export async function getInvoicesByDateRange(fechaDesde, fechaHasta) {
 }
 
 const CUENTA_LABORATORIO = (process.env.QBO_CUENTA_LABORATORIO || 'Laboratorios').trim();
+const CUENTA_INSUMOS = (process.env.QBO_CUENTA_INSUMOS || 'Insumos Medicos').trim();
 
-/**
- * Trae los costos de laboratorio (Bills/facturas de proveedor) de un rango de
- * fechas, filtrados a la cuenta de costo de laboratorio configurada
- * (QBO_CUENTA_LABORATORIO). Solo lectura -- para el modulo de Comisiones.
- * Antes esto vivia en una segunda QuickBooks (quickbooks2.js); ahora la
- * cuenta de Laboratorios tambien existe en esta misma compania.
- */
-export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
+async function getBillsByDateRange(fechaDesde, fechaHasta) {
   const bills = [];
   let startPosition = 1;
   const pageSize = 100;
@@ -215,20 +209,27 @@ export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
     if (page.length < pageSize) break;
     startPosition += pageSize;
   }
+  return bills;
+}
 
+/** Extrae las lineas de unas Bills ya traidas que pertenecen a la cuenta de costo dada. */
+function extraerCostosPorCuenta(bills, nombreCuenta, { soloConPaciente = false } = {}) {
   const costos = [];
   for (const bill of bills) {
     for (const linea of bill.Line ?? []) {
       const detalle = linea.AccountBasedExpenseLineDetail ?? linea.ItemBasedExpenseLineDetail;
       const cuentaNombre = detalle?.AccountRef?.name ?? detalle?.ItemRef?.name ?? '';
-      if (!cuentaNombre.includes(CUENTA_LABORATORIO)) continue;
+      if (!cuentaNombre.includes(nombreCuenta)) continue;
+
+      const paciente = detalle?.CustomerRef?.name ?? '';
+      if (soloConPaciente && !paciente) continue;
 
       costos.push({
         idBill: bill.Id,
         numero: bill.DocNumber ?? bill.Id,
         fecha: bill.TxnDate,
         proveedor: bill.VendorRef?.name ?? '',
-        paciente: detalle?.CustomerRef?.name ?? '',
+        paciente,
         // Texto libre (no estructurado) que suele incluir el doctor -- QuickBooks
         // no expone custom fields en Bill/Purchase via API, solo en Invoice.
         doctorTexto: linea.Description ?? '',
@@ -237,6 +238,22 @@ export async function getCostosLaboratorio(fechaDesde, fechaHasta) {
     }
   }
   return costos;
+}
+
+/**
+ * Trae los costos de laboratorio e insumos medicos (Bills/facturas de
+ * proveedor) de un rango de fechas, filtrados a las cuentas configuradas
+ * (QBO_CUENTA_LABORATORIO / QBO_CUENTA_INSUMOS). Solo lectura -- para el
+ * modulo de Comisiones. Los insumos solo se listan si la linea trae un
+ * paciente (Cliente) asociado -- sin eso no hay forma de saber a que
+ * comision restarlos.
+ */
+export async function getCostosOperativos(fechaDesde, fechaHasta) {
+  const bills = await getBillsByDateRange(fechaDesde, fechaHasta);
+  return {
+    laboratorio: extraerCostosPorCuenta(bills, CUENTA_LABORATORIO),
+    insumos: extraerCostosPorCuenta(bills, CUENTA_INSUMOS, { soloConPaciente: true }),
+  };
 }
 
 /** Trae todos los Items (productos/servicios) activos. */

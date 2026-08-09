@@ -15,6 +15,7 @@ import {
   FileText,
   Stethoscope,
   Clock,
+  Pill,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
@@ -65,6 +66,7 @@ const COLUMNAS_DETALLE = [
   { key: 'medioPago', label: 'Medio de pago' },
   { key: 'totalAsociado', label: 'Total', numeric: true },
   { key: 'laboratorios', label: 'Laboratorios', numeric: true },
+  { key: 'insumos', label: 'Insumos', numeric: true },
   { key: 'base', label: 'Base', numeric: true },
   { key: 'comisionPct', label: '% Com.', numeric: true },
   { key: 'comisionAPagar', label: 'Comisión', numeric: true },
@@ -170,6 +172,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
                   <td className="px-4 py-2 whitespace-nowrap">{f.medioPago}</td>
                   <td className="px-4 py-2 text-right">${f.totalAsociado.toFixed(2)}</td>
                   <td className="px-4 py-2 text-right">{f.laboratorios ? `$${f.laboratorios.toFixed(2)}` : '—'}</td>
+                  <td className="px-4 py-2 text-right">{f.insumos ? `$${f.insumos.toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2 text-right">${f.base.toFixed(2)}</td>
                   <td className="px-4 py-2 text-right">{Math.round(f.comisionPct * 100)}%</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">${f.comisionAPagar.toFixed(2)}</td>
@@ -205,29 +208,30 @@ export default function ComisionesModule() {
   const [hasta, setHasta] = useState(hoy());
   const [resultado, setResultado] = useState(null);
   const [asignaciones, setAsignaciones] = useState({}); // indice del costo de laboratorio -> idFactura
+  const [asignacionesInsumos, setAsignacionesInsumos] = useState({}); // indice del costo de insumos -> idFactura
   const [asignacionesDoctor, setAsignacionesDoctor] = useState({}); // "idFactura:idLinea" -> id del doctor
   const [loading, setLoading] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('resumen');
   const [costoParaAsociar, setCostoParaAsociar] = useState(null); // costo de laboratorio abierto en el lookup
+  const [insumoParaAsociar, setInsumoParaAsociar] = useState(null); // costo de insumos abierto en el lookup
 
-  async function calcular(asignacionesActuales = asignaciones, asignacionesDoctorActuales = asignacionesDoctor) {
+  async function calcular(overrides = {}) {
+    const body = {
+      desde,
+      hasta,
+      asignacionesLaboratorio: overrides.laboratorio ?? asignaciones,
+      asignacionesInsumos: overrides.insumos ?? asignacionesInsumos,
+      asignacionesDoctor: overrides.doctor ?? asignacionesDoctor,
+    };
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch('/api/comisiones', {
-        method: 'POST',
-        body: JSON.stringify({
-          desde,
-          hasta,
-          asignacionesLaboratorio: asignacionesActuales,
-          asignacionesDoctor: asignacionesDoctorActuales,
-        }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Error desconocido');
-      setResultado(body);
+      const res = await apiFetch('/api/comisiones', { method: 'POST', body: JSON.stringify(body) });
+      const respuesta = await res.json();
+      if (!res.ok) throw new Error(respuesta.error || 'Error desconocido');
+      setResultado(respuesta);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -235,7 +239,9 @@ export default function ComisionesModule() {
     }
   }
 
-  const pendientesTotal = resultado ? resultado.sinIdentificar.length + resultado.laboratoriosPendientes.length : 0;
+  const pendientesTotal = resultado
+    ? resultado.sinIdentificar.length + resultado.laboratoriosPendientes.length + resultado.insumosPendientes.length
+    : 0;
 
   // Al calcular (o cuando cambian los pendientes), llevar al usuario primero a
   // donde hay que actuar; si no hay nada pendiente, mostrar el resumen.
@@ -254,7 +260,15 @@ export default function ComisionesModule() {
     if (idFactura) nuevas[indice] = idFactura;
     else delete nuevas[indice];
     setAsignaciones(nuevas);
-    calcular(nuevas, asignacionesDoctor);
+    calcular({ laboratorio: nuevas });
+  }
+
+  function asignarInsumo(indice, idFactura) {
+    const nuevas = { ...asignacionesInsumos };
+    if (idFactura) nuevas[indice] = idFactura;
+    else delete nuevas[indice];
+    setAsignacionesInsumos(nuevas);
+    calcular({ insumos: nuevas });
   }
 
   function asignarDoctor(idFactura, idLinea, doctorId) {
@@ -263,7 +277,7 @@ export default function ComisionesModule() {
     if (doctorId) nuevas[clave] = doctorId;
     else delete nuevas[clave];
     setAsignacionesDoctor(nuevas);
-    calcular(asignaciones, nuevas);
+    calcular({ doctor: nuevas });
   }
 
   async function descargar() {
@@ -272,7 +286,7 @@ export default function ComisionesModule() {
     try {
       const res = await apiFetch('/api/comisiones/descargar', {
         method: 'POST',
-        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignaciones, asignacionesDoctor }),
+        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignaciones, asignacionesInsumos, asignacionesDoctor }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -322,8 +336,9 @@ export default function ComisionesModule() {
             size="md"
             onClick={() => {
               setAsignaciones({});
+              setAsignacionesInsumos({});
               setAsignacionesDoctor({});
-              calcular({}, {});
+              calcular({ laboratorio: {}, insumos: {}, doctor: {} });
             }}
             disabled={loading}
           >
@@ -341,9 +356,9 @@ export default function ComisionesModule() {
 
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
-      {resultado?.laboratorioError && (
+      {resultado?.costosError && (
         <div className="rounded-xl border border-amber-200 bg-warning-light px-3 py-2.5 text-sm text-slate-700">
-          <strong>Laboratorios en $0:</strong> no se pudo leer la cuenta de Laboratorios de QuickBooks ({resultado.laboratorioError}).
+          <strong>Laboratorios/Insumos en $0:</strong> no se pudieron leer esas cuentas de QuickBooks ({resultado.costosError}).
         </div>
       )}
 
@@ -377,11 +392,13 @@ export default function ComisionesModule() {
                 <div>
                   <p className="text-sm font-bold text-slate-800">Existen pendientes antes de finalizar</p>
                   <p className="mt-0.5 text-[0.85rem] text-slate-600">
-                    {resultado.sinIdentificar.length > 0 && <>{resultado.sinIdentificar.length} prestación(es) sin doctor</>}
-                    {resultado.sinIdentificar.length > 0 && resultado.laboratoriosPendientes.length > 0 && ' · '}
-                    {resultado.laboratoriosPendientes.length > 0 && (
-                      <>{resultado.laboratoriosPendientes.length} laboratorio(s) sin asignar</>
-                    )}
+                    {[
+                      resultado.sinIdentificar.length > 0 && `${resultado.sinIdentificar.length} prestación(es) sin doctor`,
+                      resultado.laboratoriosPendientes.length > 0 && `${resultado.laboratoriosPendientes.length} laboratorio(s) sin asignar`,
+                      resultado.insumosPendientes.length > 0 && `${resultado.insumosPendientes.length} insumo(s) sin asignar`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
                 </div>
               </div>
@@ -501,6 +518,43 @@ export default function ComisionesModule() {
                 </Card>
               )}
 
+              {resultado.insumosPendientes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      <span className="flex items-center gap-2 text-warning">
+                        <Pill size={16} />
+                        Insumos médicos ({resultado.insumosPendientes.length})
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="mb-1 text-sm text-slate-500">
+                      Busca y asocia cada costo a la factura correcta — no se asigna solo porque el paciente podría tener
+                      más de una factura en el rango, o el nombre no coincide exacto.
+                    </p>
+                    {resultado.insumosPendientes.map((l) => (
+                      <div
+                        key={l.indice}
+                        className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-100 bg-warning-light/40 px-3 py-2.5"
+                      >
+                        <div className="min-w-[220px] flex-1 text-sm">
+                          <span className="font-medium text-slate-800">{l.paciente || '(sin paciente)'}</span>
+                          <span className="text-slate-500">
+                            {' '}
+                            · {l.doctorTexto || 'sin doctor'} · #{l.numero} · {l.fecha} · ${Number(l.monto).toFixed(2)}
+                          </span>
+                        </div>
+                        <Button variant="secondary" size="md" onClick={() => setInsumoParaAsociar(l)}>
+                          <Search size={14} />
+                          Buscar y asociar factura
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               {pendientesTotal === 0 && (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-card border border-slate-200 bg-white py-16 text-center shadow-card">
                   <CheckCircle2 size={28} className="text-success" />
@@ -542,6 +596,14 @@ export default function ComisionesModule() {
             costo={costoParaAsociar}
             filas={resultado.filas}
             onSeleccionar={(idFactura) => asignarLaboratorio(costoParaAsociar.indice, idFactura)}
+          />
+
+          <FacturaLookupModal
+            open={Boolean(insumoParaAsociar)}
+            onClose={() => setInsumoParaAsociar(null)}
+            costo={insumoParaAsociar}
+            filas={resultado.filas}
+            onSeleccionar={(idFactura) => asignarInsumo(insumoParaAsociar.indice, idFactura)}
           />
         </>
       )}
