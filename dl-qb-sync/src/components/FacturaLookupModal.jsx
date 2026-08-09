@@ -12,6 +12,18 @@ function normalizar(texto) {
     .toLowerCase();
 }
 
+// Palabras que aparecen seguido en la descripcion del costo de laboratorio
+// pero no identifican a nadie (titulos, "Px" de paciente, etc.) -- se
+// descartan para no generar falsos matches de doctor.
+const PALABRAS_IGNORAR_DOCTOR = new Set(['dr', 'dra', 'doctor', 'doctora', 'px']);
+
+function tokensDoctor(texto) {
+  return normalizar(texto)
+    .replace(/[.,()]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length > 2 && !PALABRAS_IGNORAR_DOCTOR.has(t));
+}
+
 /** Que tan bien matchea una factura candidata contra el costo de laboratorio, 0-100. */
 function calcularConfianza(costo, factura) {
   let score = 0;
@@ -29,6 +41,15 @@ function calcularConfianza(costo, factura) {
   }
 
   if (Number(factura.totalAsociado) >= Number(costo.monto)) score += 10;
+
+  // La descripcion del costo de laboratorio a veces trae el doctor escrito a
+  // mano (ej. "...Dra. Lourdes" o "Dr. Champsaur") -- si algun token coincide
+  // con el doctor de la factura candidata, suma como señal extra de match.
+  const tokensCostoDoctor = tokensDoctor(costo.doctorTexto);
+  if (tokensCostoDoctor.length) {
+    const tokensFacturaDoctor = new Set(tokensDoctor(factura.doctor));
+    if (tokensCostoDoctor.some((t) => tokensFacturaDoctor.has(t))) score += 15;
+  }
 
   return Math.round(Math.min(score, 100));
 }
@@ -123,6 +144,7 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
           <span className="text-slate-600">
             {costo.paciente || '(sin paciente)'} · {costo.fecha} · ${Number(costo.monto).toFixed(2)} · {costo.proveedor}
           </span>
+          {costo.doctorTexto && <p className="mt-1 text-[0.8rem] text-slate-500">{costo.doctorTexto}</p>}
         </div>
       )}
 

@@ -61,6 +61,7 @@ const COLUMNAS_DETALLE = [
   { key: 'doctor', label: 'Doctor' },
   { key: 'numeroPago', label: '# Pago' },
   { key: 'paciente', label: 'Paciente' },
+  { key: 'prestacion', label: 'Prestación' },
   { key: 'medioPago', label: 'Medio de pago' },
   { key: 'totalAsociado', label: 'Total', numeric: true },
   { key: 'laboratorios', label: 'Laboratorios', numeric: true },
@@ -69,7 +70,7 @@ const COLUMNAS_DETALLE = [
   { key: 'comisionAPagar', label: 'Comisión', numeric: true },
 ];
 
-function DetalleTab({ filas }) {
+function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
   const [busqueda, setBusqueda] = useState('');
   const [orden, setOrden] = useState({ campo: 'comisionAPagar', dir: 'desc' });
   const [pagina, setPagina] = useState(1);
@@ -151,13 +152,21 @@ function DetalleTab({ filas }) {
                   </td>
                 </tr>
               )}
-              {visibles.map((f, i) => (
-                <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
-                  <td className="px-4 py-2 whitespace-nowrap">{f.doctor}</td>
+              {visibles.map((f) => (
+                <tr key={`${f.idFactura}:${f.idLinea}`} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                  <td className="px-4 py-2">
+                    <SearchableSelect
+                      className="w-48"
+                      options={doctoresDisponibles.map((d) => ({ value: d.id, label: `${d.titulo} ${d.nombre} ${d.apellido}` }))}
+                      value={f.doctorId}
+                      onChange={(v) => onCambiarDoctor(f.idFactura, f.idLinea, v)}
+                    />
+                  </td>
                   <td className="px-4 py-2">{f.numeroPago}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     {f.nombrePaciente} {f.apellidosPaciente}
                   </td>
+                  <td className="px-4 py-2 max-w-[220px] truncate" title={f.prestacion}>{f.prestacion}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{f.medioPago}</td>
                   <td className="px-4 py-2 text-right">${f.totalAsociado.toFixed(2)}</td>
                   <td className="px-4 py-2 text-right">{f.laboratorios ? `$${f.laboratorios.toFixed(2)}` : '—'}</td>
@@ -172,7 +181,7 @@ function DetalleTab({ filas }) {
       </div>
 
       <div className="flex items-center justify-between text-[0.8rem] text-slate-500">
-        <span>{filtradas.length} factura(s)</span>
+        <span>{filtradas.length} línea(s)</span>
         {totalPaginas > 1 && (
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" disabled={pagina === 1} onClick={() => setPagina((p) => p - 1)}>
@@ -196,7 +205,7 @@ export default function ComisionesModule() {
   const [hasta, setHasta] = useState(hoy());
   const [resultado, setResultado] = useState(null);
   const [asignaciones, setAsignaciones] = useState({}); // indice del costo de laboratorio -> idFactura
-  const [asignacionesDoctor, setAsignacionesDoctor] = useState({}); // idFactura -> id del doctor
+  const [asignacionesDoctor, setAsignacionesDoctor] = useState({}); // "idFactura:idLinea" -> id del doctor
   const [loading, setLoading] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState('');
@@ -248,10 +257,11 @@ export default function ComisionesModule() {
     calcular(nuevas, asignacionesDoctor);
   }
 
-  function asignarDoctor(idFactura, doctorId) {
+  function asignarDoctor(idFactura, idLinea, doctorId) {
+    const clave = `${idFactura}:${idLinea}`;
     const nuevas = { ...asignacionesDoctor };
-    if (doctorId) nuevas[idFactura] = doctorId;
-    else delete nuevas[idFactura];
+    if (doctorId) nuevas[clave] = doctorId;
+    else delete nuevas[clave];
     setAsignacionesDoctor(nuevas);
     calcular(asignaciones, nuevas);
   }
@@ -349,7 +359,7 @@ export default function ComisionesModule() {
           {/* 1. Dashboard superior */}
           <div className="flex flex-wrap gap-3">
             <StatTile icon={DollarSign} label="Total Comisión" value={`$${resultado.totalGeneral.toFixed(2)}`} tone="primary" />
-            <StatTile icon={FileText} label="Facturas" value={resultado.filas.length} />
+            <StatTile icon={FileText} label="Facturas" value={resultado.facturasEncontradas} />
             <StatTile icon={Stethoscope} label="Doctores" value={resultado.resumen.length} />
             <StatTile
               icon={Clock}
@@ -367,7 +377,7 @@ export default function ComisionesModule() {
                 <div>
                   <p className="text-sm font-bold text-slate-800">Existen pendientes antes de finalizar</p>
                   <p className="mt-0.5 text-[0.85rem] text-slate-600">
-                    {resultado.sinIdentificar.length > 0 && <>{resultado.sinIdentificar.length} factura(s) sin doctor</>}
+                    {resultado.sinIdentificar.length > 0 && <>{resultado.sinIdentificar.length} prestación(es) sin doctor</>}
                     {resultado.sinIdentificar.length > 0 && resultado.laboratoriosPendientes.length > 0 && ' · '}
                     {resultado.laboratoriosPendientes.length > 0 && (
                       <>{resultado.laboratoriosPendientes.length} laboratorio(s) sin asignar</>
@@ -415,25 +425,27 @@ export default function ComisionesModule() {
                     <CardTitle>
                       <span className="flex items-center gap-2 text-danger">
                         <UserX size={16} />
-                        Facturas sin doctor ({resultado.sinIdentificar.length})
+                        Prestaciones sin doctor ({resultado.sinIdentificar.length})
                       </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <p className="mb-1 text-sm text-slate-500">
-                      La Nota para cliente no coincide con ningún doctor del catálogo. Elige el doctor real para que esta
-                      factura entre en el cálculo (esto solo corrige el reporte, no cambia la factura en QuickBooks).
+                      La Nota para cliente no coincide con ningún doctor del catálogo. Elige el doctor real de esta
+                      prestación para que entre en el cálculo (esto solo corrige el reporte, no cambia la factura en
+                      QuickBooks).
                     </p>
                     {resultado.sinIdentificar.map((s) => (
                       <div
-                        key={s.idFactura}
+                        key={`${s.idFactura}:${s.idLinea}`}
                         className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-danger-light px-3 py-2.5"
                       >
                         <div className="min-w-[220px] flex-1 text-sm">
                           <span className="font-medium text-slate-800">{s.paciente || '(sin paciente)'}</span>
                           <span className="text-slate-500">
                             {' '}
-                            · #{s.docNumber} · {s.fecha} · nota: "{s.notaCliente || '(vacía)'}" · ${Number(s.total).toFixed(2)}
+                            · #{s.docNumber} · {s.fecha} · {s.prestacion || '(sin nombre)'} · nota: "
+                            {s.notaCliente || '(vacía)'}" · ${Number(s.total).toFixed(2)}
                           </span>
                         </div>
                         <SearchableSelect
@@ -442,8 +454,8 @@ export default function ComisionesModule() {
                             value: d.id,
                             label: `${d.titulo} ${d.nombre} ${d.apellido}`,
                           }))}
-                          value={asignacionesDoctor[s.idFactura]}
-                          onChange={(v) => asignarDoctor(s.idFactura, v)}
+                          value={asignacionesDoctor[`${s.idFactura}:${s.idLinea}`]}
+                          onChange={(v) => asignarDoctor(s.idFactura, s.idLinea, v)}
                           placeholder="(elegir doctor)"
                         />
                       </div>
@@ -516,7 +528,13 @@ export default function ComisionesModule() {
             </Card>
           )}
 
-          {tab === 'detalle' && <DetalleTab filas={resultado.filas} />}
+          {tab === 'detalle' && (
+            <DetalleTab
+              filas={resultado.filas}
+              doctoresDisponibles={resultado.doctoresDisponibles}
+              onCambiarDoctor={asignarDoctor}
+            />
+          )}
 
           <FacturaLookupModal
             open={Boolean(costoParaAsociar)}

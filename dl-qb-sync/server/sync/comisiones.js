@@ -64,12 +64,15 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
   const doctoresPorId = new Map(doctores.map((d) => [String(d.id), d]));
   const descuentoPorMedio = new Map(metodosPago.map((m) => [m.medio_pago, m.porcentaje]));
 
-  // Primera pasada: arma las lineas base y cuenta cuantas facturas hay por
-  // paciente en el rango. Si un paciente aparece mas de una vez, no se puede
-  // saber con certeza a cual factura pertenece un costo de laboratorio -- en
-  // ese caso NO se asigna automaticamente (mejor dejarlo para revision manual
-  // que adivinar mal en un numero que afecta la comision de alguien), salvo
-  // que ya venga una asignacion manual explicita para ese costo.
+  // Primera pasada: arma las lineas base (una por prestacion/linea de la
+  // factura, no una por factura -- una factura puede tener varias
+  // prestaciones y cada una puede ser de un doctor distinto) y cuenta cuantas
+  // facturas hay por paciente en el rango. Si un paciente aparece mas de una
+  // vez, no se puede saber con certeza a cual factura pertenece un costo de
+  // laboratorio -- en ese caso NO se asigna automaticamente (mejor dejarlo
+  // para revision manual que adivinar mal en un numero que afecta la
+  // comision de alguien), salvo que ya venga una asignacion manual explicita
+  // para ese costo.
   const prefilas = [];
   const sinIdentificar = [];
   const conteoPorPaciente = new Map();
@@ -77,48 +80,85 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
   for (const inv of invoices) {
     const memo = inv.CustomerMemo?.value ?? '';
     const { nombre, apellido } = separarNombreApellido(memo);
-    const doctorAsignadoManual = doctoresPorId.get(String(asignacionesDoctor[inv.Id] ?? ''));
-    const doctor = doctorAsignadoManual ?? doctoresPorClave.get(`${normalizar(nombre)}|${normalizar(apellido)}`);
+    // Doctor del encabezado (Nota para cliente): es la sugerencia por
+    // defecto para cada linea, y tambien el que absorbe el costo de
+    // Laboratorio completo de la factura (no se reparte entre lineas).
+    const doctorEncabezado = doctoresPorClave.get(`${normalizar(nombre)}|${normalizar(apellido)}`) ?? null;
 
     const pacienteNombre = inv.CustomerRef?.name ?? '';
     const { nombre: pacienteNombreSep, apellido: pacienteApellidoSep } = separarNombreApellido(pacienteNombre);
     const medioPago = inv.PaymentMethodRef?.name ?? '';
-    const totalAsociado = Number(inv.TotalAmt ?? 0);
 
-    if (!doctor) {
+    const lineasFactura = (inv.Line ?? []).filter((l) => l.DetailType === 'SalesItemLineDetail');
+    if (lineasFactura.length === 0) continue;
+
+    // Cada linea usa el doctor del encabezado por defecto, salvo que se haya
+    // asignado manualmente un doctor distinto para esa linea puntual (cuando
+    // una factura trae prestaciones de mas de un doctor).
+    const lineasResueltas = lineasFactura.map((linea) => {
+      const idLinea = String(linea.Id);
+      const claveAsignacion = `${inv.Id}:${idLinea}`;
+      const doctorManual = doctoresPorId.get(String(asignacionesDoctor[claveAsignacion] ?? ''));
+      return {
+        idLinea,
+        doctor: doctorManual ?? doctorEncabezado,
+        prestacion: linea.Description || linea.SalesItemLineDetail?.ItemRef?.name || '',
+        monto: Number(linea.Amount ?? 0),
+      };
+    });
+
+    for (const l of lineasResueltas) {
+      if (l.doctor) continue;
       sinIdentificar.push({
         idFactura: inv.Id,
+        idLinea: l.idLinea,
         docNumber: inv.DocNumber,
         fecha: inv.TxnDate,
         paciente: pacienteNombre,
         notaCliente: memo,
-        total: totalAsociado,
+        prestacion: l.prestacion,
+        total: l.monto,
       });
-      continue;
     }
+
+    const lineasConDoctor = lineasResueltas.filter((l) => l.doctor);
+    if (lineasConDoctor.length === 0) continue;
 
     const clavePaciente = normalizar(pacienteNombre);
     conteoPorPaciente.set(clavePaciente, (conteoPorPaciente.get(clavePaciente) ?? 0) + 1);
 
-    prefilas.push({
-      idFactura: inv.Id,
-      doctor,
-      docNumber: inv.DocNumber,
-      txnDate: inv.TxnDate,
-      pacienteNombre,
-      pacienteNombreSep,
-      pacienteApellidoSep,
-      medioPago,
-      totalAsociado,
-      clavePaciente,
-    });
+    // La linea que absorbe el costo de Laboratorio de la factura: la primera
+    // que quedo con el mismo doctor del encabezado (si ninguna coincide, ese
+    // costo no se asigna en esta factura y queda pendiente de revision).
+    const idLineaLaboratorio = doctorEncabezado
+      ? lineasConDoctor.find((l) => l.doctor === doctorEncabezado)?.idLinea ?? null
+      : null;
+
+    for (const l of lineasConDoctor) {
+      prefilas.push({
+        idFactura: inv.Id,
+        idLinea: l.idLinea,
+        doctor: l.doctor,
+        docNumber: inv.DocNumber,
+        txnDate: inv.TxnDate,
+        pacienteNombre,
+        pacienteNombreSep,
+        pacienteApellidoSep,
+        medioPago,
+        totalAsociado: l.monto,
+        prestacion: l.prestacion,
+        clavePaciente,
+        esLineaDeLaboratorio: l.idLinea === idLineaLaboratorio,
+      });
+    }
   }
 
   const filas = [];
   for (const p of prefilas) {
     const manual = laboratorioManualPorFactura.get(String(p.idFactura));
     const pacienteUnico = conteoPorPaciente.get(p.clavePaciente) === 1;
-    const laboratorios = manual ?? (pacienteUnico ? laboratorioPorPaciente.get(p.clavePaciente) ?? 0 : 0);
+    const laboratoriosFactura = manual ?? (pacienteUnico ? laboratorioPorPaciente.get(p.clavePaciente) ?? 0 : 0);
+    const laboratorios = p.esLineaDeLaboratorio ? laboratoriosFactura : 0;
     if (laboratorios) laboratorioUsado.add(p.clavePaciente);
 
     const descuentoPct = descuentoPorMedio.get(p.medioPago) ?? 0;
@@ -129,6 +169,7 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
 
     filas.push({
       idFactura: p.idFactura,
+      idLinea: p.idLinea,
       nombreProfesional: p.doctor.nombre,
       apellidosProfesional: p.doctor.apellido,
       especialidad: p.doctor.especialidad,
@@ -138,6 +179,8 @@ export async function calcularComisiones({ fechaDesde, fechaHasta, asignacionesL
       apellidosPaciente: p.pacienteApellidoSep,
       medioPago: p.medioPago,
       doctor: `${p.doctor.titulo} ${p.doctor.nombre} ${p.doctor.apellido}`,
+      doctorId: p.doctor.id,
+      prestacion: p.prestacion,
       totalAsociado: p.totalAsociado,
       descuentoMetodoPagoPct: descuentoPct,
       descMP,
@@ -250,8 +293,8 @@ export function construirExcelComisiones(resultado) {
     ['TOTAL GENERAL', resultado.totalGeneral],
   ]);
   const wsSinIdentificar = XLSX.utils.aoa_to_sheet([
-    ['# Factura', 'Fecha', 'Paciente', 'Nota para cliente', 'Total'],
-    ...resultado.sinIdentificar.map((s) => [s.docNumber, s.fecha, s.paciente, s.notaCliente, s.total]),
+    ['# Factura', 'Fecha', 'Paciente', 'Prestación', 'Nota para cliente', 'Total'],
+    ...resultado.sinIdentificar.map((s) => [s.docNumber, s.fecha, s.paciente, s.prestacion, s.notaCliente, s.total]),
   ]);
   const wsLaboratorios = XLSX.utils.aoa_to_sheet([
     ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
