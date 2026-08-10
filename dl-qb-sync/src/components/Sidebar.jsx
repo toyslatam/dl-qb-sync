@@ -10,6 +10,7 @@ import {
   RefreshCcw,
   LogOut,
   Link2,
+  ShieldOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -22,6 +23,7 @@ const NAV = [
 const CONFIG_SUBNAV = [
   { key: 'master', label: 'Master', icon: Landmark },
   { key: 'residuales', label: 'Residuales', icon: HeartPulse },
+  { key: 'excepciones', label: 'Excepciones', icon: ShieldOff },
   { key: 'relacionados', label: 'Relacionados', icon: Link2 },
 ];
 

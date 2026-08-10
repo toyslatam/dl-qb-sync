@@ -174,7 +174,9 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
                   <td className="px-4 py-2 text-right">{f.laboratorios ? `$${f.laboratorios.toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2 text-right">{f.insumos ? `$${f.insumos.toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2 text-right">${f.base.toFixed(2)}</td>
-                  <td className="px-4 py-2 text-right">{Math.round(f.comisionPct * 100)}%</td>
+                  <td className="px-4 py-2 text-right">
+                    {f.excepcion ? <span className="text-[0.72rem] font-medium text-slate-400">excepción</span> : `${Math.round(f.comisionPct * 100)}%`}
+                  </td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">${f.comisionAPagar.toFixed(2)}</td>
                 </tr>
               ))}

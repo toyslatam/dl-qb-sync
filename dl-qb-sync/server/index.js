@@ -32,6 +32,9 @@ import {
   getRelaciones,
   upsertRelacion,
   deleteRelacion,
+  getExcepciones,
+  createExcepcion,
+  deleteExcepcion,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones } from './sync/comisiones.js';
@@ -602,6 +605,37 @@ app.patch('/api/residuales/:id', async (req, res) => {
 app.delete('/api/residuales/:id', async (req, res) => {
   try {
     await deleteResidual(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Excepciones de comision (modulo de Comisiones) ---
+app.get('/api/excepciones', async (_req, res) => {
+  try {
+    res.json(await getExcepciones());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/excepciones', async (req, res) => {
+  try {
+    const { doctorId, patronPrestacion } = req.body ?? {};
+    if (!doctorId || !patronPrestacion) return res.status(400).json({ error: 'doctorId y patronPrestacion son requeridos' });
+    res.json(await createExcepcion(doctorId, patronPrestacion.trim()));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/excepciones/:id', async (req, res) => {
+  try {
+    await deleteExcepcion(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

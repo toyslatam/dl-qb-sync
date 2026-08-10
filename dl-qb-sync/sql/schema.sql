@@ -101,6 +101,19 @@ create table if not exists residuales_ortodoncia (
   updated_at timestamptz not null default now()
 );
 
+-- Hoja "Excepciones" del Excel de comisiones: casos puntuales donde una
+-- prestacion de un doctor especifico NO genera comision (ej. Dra. Ana
+-- Cristina Moreno + "abono Invisalign" -> comision en 0), sin importar el
+-- monto de la linea. patron_prestacion se busca como substring dentro del
+-- nombre de la prestacion de la factura (sin distinguir mayusculas/tildes),
+-- asi que "abono invisalign" matchea "Abono Invisalign 1-3", "2-3", etc.
+create table if not exists excepciones_comision (
+  id bigint generated always as identity primary key,
+  doctor_id bigint not null references doctores(id) on delete cascade,
+  patron_prestacion text not null,
+  created_at timestamptz not null default now()
+);
+
 -- Pacientes que no se facturan a si mismos, sino bajo otro Customer de
 -- QuickBooks (ej. dependientes de una cuenta familiar). Cuando existe una
 -- fila aca para un paciente, tiene prioridad sobre el match normal por
@@ -126,3 +139,4 @@ alter table doctores enable row level security;
 alter table metodos_pago_descuento enable row level security;
 alter table residuales_ortodoncia enable row level security;
 alter table clientes_relacionados enable row level security;
+alter table excepciones_comision enable row level security;

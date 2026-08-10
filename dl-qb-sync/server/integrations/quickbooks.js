@@ -226,6 +226,7 @@ function extraerCostosPorCuenta(bills, nombreCuenta, { soloConPaciente = false }
 
       costos.push({
         idBill: bill.Id,
+        idLinea: linea.Id,
         numero: bill.DocNumber ?? bill.Id,
         fecha: bill.TxnDate,
         proveedor: bill.VendorRef?.name ?? '',

@@ -260,6 +260,32 @@ export async function deleteResidual(id) {
   assertOk(error, 'deleteResidual');
 }
 
+// --- Excepciones de comision: doctor + prestacion que siempre carga comision en $0 ---
+
+export async function getExcepciones() {
+  const { data, error } = await supabase
+    .from('excepciones_comision')
+    .select('*, doctores(id, titulo, nombre, apellido)')
+    .order('created_at', { ascending: false });
+  assertOk(error, 'getExcepciones');
+  return data ?? [];
+}
+
+export async function createExcepcion(doctorId, patronPrestacion) {
+  const { data, error } = await supabase
+    .from('excepciones_comision')
+    .insert({ doctor_id: doctorId, patron_prestacion: patronPrestacion })
+    .select('*, doctores(id, titulo, nombre, apellido)')
+    .single();
+  assertOk(error, 'createExcepcion');
+  return data;
+}
+
+export async function deleteExcepcion(id) {
+  const { error } = await supabase.from('excepciones_comision').delete().eq('id', id);
+  assertOk(error, 'deleteExcepcion');
+}
+
 // --- Clientes relacionados (facturar un paciente bajo otro Customer de QuickBooks) ---
 
 export async function getRelaciones() {

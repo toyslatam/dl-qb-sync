@@ -1,6 +1,6 @@
 import XLSX from 'xlsx';
 import { getInvoicesByDateRange, getCostosOperativos } from '../integrations/quickbooks.js';
-import { getDoctores, getMetodosPagoDescuento, getResiduales } from '../db/store.js';
+import { getDoctores, getMetodosPagoDescuento, getResiduales, getExcepciones } from '../db/store.js';
 
 /** Separa "Francisco SousaLennox" en { nombre: 'Francisco', apellido: 'SousaLennox' } (primer espacio). */
 function separarNombreApellido(texto) {
@@ -30,12 +30,29 @@ export async function calcularComisiones({
   asignacionesInsumos = {},
   asignacionesDoctor = {},
 }) {
-  const [invoices, doctores, metodosPago, residuales] = await Promise.all([
+  const [invoices, doctores, metodosPago, residuales, excepciones] = await Promise.all([
     getInvoicesByDateRange(fechaDesde, fechaHasta),
     getDoctores(),
     getMetodosPagoDescuento(),
     getResiduales(),
+    getExcepciones(),
   ]);
+
+  // doctor_id -> lista de patrones (ya normalizados) que cargan comision $0
+  // para ese doctor, sin importar el monto de la linea (hoja "Excepciones"
+  // del Excel original, ej. Dra. Ana Cristina Moreno + "abono Invisalign").
+  const patronesExcepcionPorDoctor = new Map();
+  for (const exc of excepciones) {
+    const lista = patronesExcepcionPorDoctor.get(exc.doctor_id) ?? [];
+    lista.push(normalizar(exc.patron_prestacion));
+    patronesExcepcionPorDoctor.set(exc.doctor_id, lista);
+  }
+  function esExcepcion(doctorId, prestacion) {
+    const patrones = patronesExcepcionPorDoctor.get(doctorId);
+    if (!patrones) return false;
+    const prestacionNorm = normalizar(prestacion);
+    return patrones.some((p) => prestacionNorm.includes(p));
+  }
 
   // Si QuickBooks no responde por lo que sea, el reporte sigue funcionando
   // con Laboratorios/Insumos en $0 en vez de fallar por completo.
@@ -47,12 +64,17 @@ export async function calcularComisiones({
   } catch (err) {
     costosError = err.message;
   }
-  // Indice estable dentro de este calculo, para que el frontend pueda decir
-  // "el costo #3 va a la factura X" sin depender de IDs internos de QBO.
-  costosLaboratorio = costosLaboratorio.map((c, i) => ({ ...c, indice: i }));
-  costosInsumos = costosInsumos.map((c, i) => ({ ...c, indice: i }));
+  // Identificador estable del costo ("idBill:idLinea" de QuickBooks), para
+  // que el frontend pueda recordar "este costo ya va a la factura X" entre
+  // un calculo y el siguiente. Un indice de posicion (0,1,2...) no sirve
+  // porque el orden en que QuickBooks devuelve las Bills puede variar entre
+  // llamadas -- eso hacia que un costo ya asociado volviera a aparecer como
+  // pendiente.
+  costosLaboratorio = costosLaboratorio.map((c) => ({ ...c, indice: `${c.idBill}:${c.idLinea}` }));
+  costosInsumos = costosInsumos.map((c) => ({ ...c, indice: `${c.idBill}:${c.idLinea}` }));
 
   function armarIndicesDeCosto(costos, asignaciones) {
+    const porIndice = new Map(costos.map((c) => [c.indice, c]));
     const porPaciente = new Map();
     for (const costo of costos) {
       const clave = normalizar(costo.paciente);
@@ -61,12 +83,12 @@ export async function calcularComisiones({
     }
     // idFactura (string) -> suma de costos asignados a mano.
     const manualPorFactura = new Map();
-    for (const [indiceStr, idFactura] of Object.entries(asignaciones)) {
-      const costo = costos[Number(indiceStr)];
+    for (const [indiceCosto, idFactura] of Object.entries(asignaciones)) {
+      const costo = porIndice.get(indiceCosto);
       if (!costo || !idFactura) continue;
       manualPorFactura.set(String(idFactura), (manualPorFactura.get(String(idFactura)) ?? 0) + costo.monto);
     }
-    const asignadosManualmente = new Set(Object.keys(asignaciones).map(Number));
+    const asignadosManualmente = new Set(Object.keys(asignaciones));
     return { porPaciente, manualPorFactura, asignadosManualmente, usado: new Set() };
   }
 
@@ -185,7 +207,8 @@ export async function calcularComisiones({
     const descuentoPct = descuentoPorMedio.get(p.medioPago) ?? 0;
     const descMP = p.totalAsociado * descuentoPct;
     const base = p.totalAsociado - descMP - laboratorios - costoInsumos;
-    const comisionPct = p.doctor.comision_pct;
+    const excepcion = esExcepcion(p.doctor.id, p.prestacion);
+    const comisionPct = excepcion ? 0 : p.doctor.comision_pct;
     const comisionAPagar = base * comisionPct;
 
     filas.push({
@@ -209,6 +232,7 @@ export async function calcularComisiones({
       insumos: costoInsumos,
       base,
       comisionPct,
+      excepcion,
       comisionAPagar,
       residualesOrtodoncia: 0,
       total: comisionAPagar,
