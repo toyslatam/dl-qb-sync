@@ -101,6 +101,12 @@ create table if not exists residuales_ortodoncia (
   updated_at timestamptz not null default now()
 );
 
+-- Vincula el login (Supabase Auth) de un doctor a su fila en el catalogo,
+-- para que "Mi Comision" sepa filtrar los datos de ese usuario especifico.
+-- "create table if not exists" no agrega columnas a una tabla que ya existe,
+-- por eso va aparte como alter table.
+alter table doctores add column if not exists user_email text unique;
+
 -- Hoja "Excepciones" del Excel de comisiones: casos puntuales donde una
 -- prestacion de un doctor especifico NO genera comision (ej. Dra. Ana
 -- Cristina Moreno + "abono Invisalign" -> comision en 0), sin importar el

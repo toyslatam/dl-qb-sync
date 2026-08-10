@@ -292,6 +292,27 @@ export async function calcularComisiones({
   };
 }
 
+/**
+ * Recorta un resultado de calcularComisiones a un solo doctor, para "Mi
+ * Comision". Nunca debe salir de este archivo informacion de otros doctores
+ * ni datos administrativos (pendientes, costos de laboratorio/insumos en
+ * crudo) hacia un usuario que no sea el admin.
+ */
+export function filtrarComisionesParaDoctor(resultado, doctor) {
+  const nombreCompleto = `${doctor.nombre} ${doctor.apellido}`;
+  const filas = resultado.filas.filter((f) => f.doctorId === doctor.id);
+  const resumen = resultado.resumen.filter((r) => r.doctor === nombreCompleto);
+  const totalGeneral = resumen.reduce((sum, r) => sum + r.total, 0);
+
+  return {
+    filas,
+    resumen,
+    totalGeneral,
+    facturasEncontradas: new Set(filas.map((f) => f.idFactura)).size,
+    doctoresDisponibles: [{ id: doctor.id, titulo: doctor.titulo, nombre: doctor.nombre, apellido: doctor.apellido }],
+  };
+}
+
 const ENCABEZADOS = [
   'Nombre Profesional Tratamiento',
   'Apellidos Profesional Tratamiento',
@@ -344,25 +365,33 @@ export function construirExcelComisiones(resultado) {
     ...resultado.resumen.map((r) => [r.doctor, r.total]),
     ['TOTAL GENERAL', resultado.totalGeneral],
   ]);
-  const wsSinIdentificar = XLSX.utils.aoa_to_sheet([
-    ['# Factura', 'Fecha', 'Paciente', 'Prestación', 'Nota para cliente', 'Total'],
-    ...resultado.sinIdentificar.map((s) => [s.docNumber, s.fecha, s.paciente, s.prestacion, s.notaCliente, s.total]),
-  ]);
-  const wsLaboratorios = XLSX.utils.aoa_to_sheet([
-    ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
-    ...resultado.laboratoriosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
-  ]);
-  const wsInsumos = XLSX.utils.aoa_to_sheet([
-    ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
-    ...resultado.insumosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
-  ]);
-
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsCalculo, 'ArchivoCalculo');
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
-  XLSX.utils.book_append_sheet(wb, wsSinIdentificar, 'Sin identificar');
-  XLSX.utils.book_append_sheet(wb, wsLaboratorios, 'Laboratorios sin asociar');
-  XLSX.utils.book_append_sheet(wb, wsInsumos, 'Insumos sin asociar');
+
+  // Estas hojas son de gestion administrativa -- no existen en el reporte
+  // filtrado de "Mi Comision" (filtrarComisionesParaDoctor no las incluye).
+  if (resultado.sinIdentificar) {
+    const wsSinIdentificar = XLSX.utils.aoa_to_sheet([
+      ['# Factura', 'Fecha', 'Paciente', 'Prestación', 'Nota para cliente', 'Total'],
+      ...resultado.sinIdentificar.map((s) => [s.docNumber, s.fecha, s.paciente, s.prestacion, s.notaCliente, s.total]),
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsSinIdentificar, 'Sin identificar');
+  }
+  if (resultado.laboratoriosPendientes) {
+    const wsLaboratorios = XLSX.utils.aoa_to_sheet([
+      ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
+      ...resultado.laboratoriosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsLaboratorios, 'Laboratorios sin asociar');
+  }
+  if (resultado.insumosPendientes) {
+    const wsInsumos = XLSX.utils.aoa_to_sheet([
+      ['# Factura Proveedor', 'Fecha', 'Proveedor', 'Paciente', 'Doctor', 'Monto'],
+      ...resultado.insumosPendientes.map((l) => [l.numero, l.fecha, l.proveedor, l.paciente, l.doctorTexto, l.monto]),
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsInsumos, 'Insumos sin asociar');
+  }
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }

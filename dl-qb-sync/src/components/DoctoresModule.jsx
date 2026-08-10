@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Stethoscope, Plus, Pencil, Trash2, Check, Loader2, X, Search } from 'lucide-react';
+import { Stethoscope, Plus, Pencil, Trash2, Check, Loader2, X, Search, Mail, Send } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { Button } from './ui/Button.jsx';
 import { Modal } from './ui/Modal.jsx';
 
 const TITULOS = ['Dr.', 'Dra.', 'Dr(a).'];
-const VACIO = { titulo: 'Dr.', nombre: '', apellido: '', especialidad: '', comisionPct: '' };
+const VACIO = { titulo: 'Dr.', nombre: '', apellido: '', especialidad: '', comisionPct: '', userEmail: '' };
 
 async function api(path, options) {
   const res = await apiFetch(path, options);
@@ -67,6 +67,23 @@ function DoctorForm({ valores, onChange }) {
           />
         </label>
       </div>
+      <div className="sm:col-span-2">
+        <label className="block">
+          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
+            Correo (login para "Mi Comisión")
+          </span>
+          <input
+            type="email"
+            className={inputClass}
+            placeholder="ej. doctor@correo.com"
+            value={valores.userEmail ?? ''}
+            onChange={(e) => onChange({ ...valores, userEmail: e.target.value })}
+          />
+          <p className="mt-1 text-[0.75rem] text-slate-400">
+            Si este doctor inicia sesión con este correo, solo verá su propia comisión (no la de los demás).
+          </p>
+        </label>
+      </div>
     </div>
   );
 }
@@ -80,6 +97,7 @@ export default function DoctoresModule() {
   const [editandoId, setEditandoId] = useState(null);
   const [valores, setValores] = useState(VACIO);
   const [busy, setBusy] = useState(false);
+  const [invitandoId, setInvitandoId] = useState(null);
 
   function cargar() {
     setLoading(true);
@@ -105,8 +123,24 @@ export default function DoctoresModule() {
       apellido: d.apellido,
       especialidad: d.especialidad ?? '',
       comisionPct: Math.round(d.comision_pct * 100),
+      userEmail: d.user_email ?? '',
     });
     setModalAbierto(true);
+  }
+
+  async function invitar(d) {
+    if (!d.user_email) return;
+    if (!confirm(`¿Enviar invitación de acceso a ${d.user_email}?`)) return;
+    setInvitandoId(d.id);
+    setError('');
+    try {
+      await api(`/api/doctores/${d.id}/invitar`, { method: 'POST', body: JSON.stringify({ userEmail: d.user_email }) });
+      alert('Invitación enviada.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInvitandoId(null);
+    }
   }
 
   async function guardar() {
@@ -122,6 +156,7 @@ export default function DoctoresModule() {
       apellido: valores.apellido.trim(),
       especialidad: valores.especialidad.trim() || null,
       comisionPct: valores.comisionPct === '' ? 0 : Number(valores.comisionPct) / 100,
+      userEmail: valores.userEmail?.trim() || null,
     };
     try {
       if (editandoId) await api(`/api/doctores/${editandoId}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -205,6 +240,7 @@ export default function DoctoresModule() {
                 <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
                   <th className="px-5 py-3 font-semibold">Doctor</th>
                   <th className="px-5 py-3 font-semibold">Especialidad</th>
+                  <th className="px-5 py-3 font-semibold">Acceso ("Mi Comisión")</th>
                   <th className="px-5 py-3 text-right font-semibold">Comisión</th>
                   <th className="px-5 py-3 text-right font-semibold">Acciones</th>
                 </tr>
@@ -216,9 +252,25 @@ export default function DoctoresModule() {
                       {d.titulo} {d.nombre} {d.apellido}
                     </td>
                     <td className="px-5 py-3 text-slate-500">{d.especialidad || '—'}</td>
+                    <td className="px-5 py-3 text-slate-500">
+                      {d.user_email ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Mail size={12} className="text-slate-300" />
+                          {d.user_email}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-right font-semibold text-primary">{Math.round(d.comision_pct * 100)}%</td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
+                        {d.user_email && (
+                          <Button variant="ghost" size="sm" onClick={() => invitar(d)} disabled={invitandoId === d.id}>
+                            {invitandoId === d.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                            Invitar
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => abrirEdicion(d)}>
                           <Pencil size={13} />
                           Editar

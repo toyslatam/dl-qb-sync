@@ -35,9 +35,11 @@ import {
   getExcepciones,
   createExcepcion,
   deleteExcepcion,
+  findDoctorPorEmail,
+  invitarUsuario,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
-import { calcularComisiones, construirExcelComisiones } from './sync/comisiones.js';
+import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
 import {
   getAuthorizeUri,
   handleOAuthCallback,
@@ -60,6 +62,19 @@ app.use(express.json());
 // Rutas que no requieren login (health check y el handshake OAuth de QuickBooks,
 // que es una redireccion de navegador y no puede llevar el header Authorization).
 const PUBLIC_API_PATHS = ['/api/health', '/api/qbo/connect', '/api/qbo/callback'];
+
+// Correos con acceso completo a Comisiones (todas las filas, todos los
+// doctores). Debe coincidir con ADMIN_EMAILS en src/App.jsx -- ese es el
+// que controla la UI, este es el que de verdad restringe los datos.
+const ADMIN_EMAILS = ['contabilidad02@ctauditores.com'];
+
+/** A que doctor (si a alguno) le corresponde ver Comisiones este usuario. */
+async function resolverRolComisiones(email) {
+  if (!email || ADMIN_EMAILS.includes(email)) return { rol: 'admin' };
+  const doctor = await findDoctorPorEmail(email);
+  if (doctor) return { rol: 'doctor', doctor };
+  return { rol: 'ninguno' };
+}
 
 const supabaseAuth = process.env.SUPABASE_URL
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
@@ -486,7 +501,7 @@ app.get('/api/doctores', async (_req, res) => {
 
 app.post('/api/doctores', async (req, res) => {
   try {
-    const { titulo, nombre, apellido, especialidad, usuario, comisionPct } = req.body ?? {};
+    const { titulo, nombre, apellido, especialidad, usuario, comisionPct, userEmail } = req.body ?? {};
     if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido son requeridos' });
     const doctor = await createDoctor({
       titulo: titulo || 'Dr.',
@@ -495,6 +510,7 @@ app.post('/api/doctores', async (req, res) => {
       especialidad: especialidad ?? null,
       usuario: usuario ?? null,
       comision_pct: comisionPct !== undefined ? Number(comisionPct) : 0,
+      user_email: userEmail || null,
     });
     res.json(doctor);
   } catch (err) {
@@ -517,6 +533,7 @@ app.patch('/api/doctores/:id', async (req, res) => {
     if (descTarjetaCredito !== undefined) cambios.desc_tarjeta_credito = descTarjetaCredito === '' ? null : Number(descTarjetaCredito);
     if (descTarjetaClave !== undefined) cambios.desc_tarjeta_clave = descTarjetaClave === '' ? null : Number(descTarjetaClave);
     if (descYappy !== undefined) cambios.desc_yappy = descYappy === '' ? null : Number(descYappy);
+    if (req.body?.userEmail !== undefined) cambios.user_email = req.body.userEmail || null;
     res.json(await updateDoctor(req.params.id, cambios));
   } catch (err) {
     console.error(err);
@@ -528,6 +545,42 @@ app.delete('/api/doctores/:id', async (req, res) => {
   try {
     await deleteDoctor(req.params.id);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Manda la invitacion de acceso (Supabase Auth) al correo ya guardado en el doctor,
+// para que pueda entrar a "Mi Comision". Si ese correo ya tiene cuenta creada
+// (ej. porque ya usaba la app para Facturas), solo queda vinculado -- no hace falta reinvitarlo.
+app.post('/api/doctores/:id/invitar', async (req, res) => {
+  try {
+    const { userEmail } = req.body ?? {};
+    if (!userEmail) return res.status(400).json({ error: 'userEmail es requerido' });
+    await updateDoctor(req.params.id, { user_email: userEmail });
+    try {
+      await invitarUsuario(userEmail);
+    } catch (err) {
+      if (!/already registered|already exists/i.test(err.message)) throw err;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Le dice al frontend si quien inicio sesion es un doctor con acceso a "Mi Comision"
+// (y a cual), para decidir que mostrar en el menu.
+app.get('/api/mi-rol', async (req, res) => {
+  try {
+    const rolInfo = await resolverRolComisiones(req.user?.email);
+    if (rolInfo.rol === 'doctor') {
+      const { id, titulo, nombre, apellido } = rolInfo.doctor;
+      return res.json({ rol: 'doctor', doctor: { id, titulo, nombre, apellido } });
+    }
+    res.json({ rol: rolInfo.rol });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -727,11 +780,23 @@ app.delete('/api/relacionados/:id', async (req, res) => {
 // POST (no GET) porque lleva las asignaciones manuales de laboratorio en el body.
 app.post('/api/comisiones', async (req, res) => {
   try {
+    const rolInfo = await resolverRolComisiones(req.user?.email);
+    if (rolInfo.rol === 'ninguno') return res.status(403).json({ error: 'No tienes acceso a Comisiones' });
+
     const { desde, hasta, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    res.json(
-      await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor })
-    );
+    // Solo el admin puede mandar asignaciones manuales -- un doctor no debe
+    // poder influir en como se reparten los costos de otras facturas.
+    const esAdmin = rolInfo.rol === 'admin';
+    let resultado = await calcularComisiones({
+      fechaDesde: desde,
+      fechaHasta: hasta,
+      asignacionesLaboratorio: esAdmin ? asignacionesLaboratorio : {},
+      asignacionesInsumos: esAdmin ? asignacionesInsumos : {},
+      asignacionesDoctor: esAdmin ? asignacionesDoctor : {},
+    });
+    if (rolInfo.rol === 'doctor') resultado = filtrarComisionesParaDoctor(resultado, rolInfo.doctor);
+    res.json(resultado);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -740,15 +805,20 @@ app.post('/api/comisiones', async (req, res) => {
 
 app.post('/api/comisiones/descargar', async (req, res) => {
   try {
+    const rolInfo = await resolverRolComisiones(req.user?.email);
+    if (rolInfo.rol === 'ninguno') return res.status(403).json({ error: 'No tienes acceso a Comisiones' });
+
     const { desde, hasta, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    const resultado = await calcularComisiones({
+    const esAdmin = rolInfo.rol === 'admin';
+    let resultado = await calcularComisiones({
       fechaDesde: desde,
       fechaHasta: hasta,
-      asignacionesLaboratorio,
-      asignacionesInsumos,
-      asignacionesDoctor,
+      asignacionesLaboratorio: esAdmin ? asignacionesLaboratorio : {},
+      asignacionesInsumos: esAdmin ? asignacionesInsumos : {},
+      asignacionesDoctor: esAdmin ? asignacionesDoctor : {},
     });
+    if (rolInfo.rol === 'doctor') resultado = filtrarComisionesParaDoctor(resultado, rolInfo.doctor);
     const buffer = construirExcelComisiones(resultado);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="comisiones-${desde}-a-${hasta}.xlsx"`);

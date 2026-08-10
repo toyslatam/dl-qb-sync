@@ -11,6 +11,7 @@ import ResidualesModule from './components/ResidualesModule.jsx';
 import RelacionadosModule from './components/RelacionadosModule.jsx';
 import ExcepcionesModule from './components/ExcepcionesModule.jsx';
 import ComisionesModule from './components/ComisionesModule.jsx';
+import MiComisionModule from './components/MiComisionModule.jsx';
 import ResumenFacturasModule from './components/ResumenFacturasModule.jsx';
 import Sidebar from './components/Sidebar.jsx';
 
@@ -24,6 +25,7 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [showSync, setShowSync] = useState(false);
   const [modulo, setModulo] = useState('facturas');
+  const [miRol, setMiRol] = useState(undefined); // undefined = cargando, { rol, doctor? } una vez sabido
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -41,33 +43,56 @@ export default function App() {
       .catch(() => setHealth({ ok: false }));
   }, [session]);
 
-  if (session === undefined) return null;
+  // Un doctor vinculado (Doctores -> Correo de login) solo debe ver "Mi
+  // Comision" -- el backend ya filtra los datos, pero ademas restringimos el
+  // menu para que no se le muestren pantallas que no le corresponden.
+  useEffect(() => {
+    if (!session) return;
+    if (ADMIN_EMAILS.includes(session.user.email)) {
+      setMiRol({ rol: 'admin' });
+      return;
+    }
+    apiFetch('/api/mi-rol')
+      .then((res) => res.json())
+      .then(setMiRol)
+      .catch(() => setMiRol({ rol: 'ninguno' }));
+  }, [session]);
+
+  if (session === undefined || miRol === undefined) return null;
   if (!session) return <Login />;
 
   const esAdmin = ADMIN_EMAILS.includes(session.user.email);
+  const esDoctor = miRol.rol === 'doctor';
   const enFacturas = modulo === 'facturas';
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar
-        modulo={modulo}
+        modulo={esDoctor ? 'mi-comision' : modulo}
         onModuloChange={setModulo}
         health={health}
         email={session.user.email}
         onSync={() => setShowSync(true)}
         onSignOut={() => supabase.auth.signOut()}
+        soloMiComision={esDoctor}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className={enFacturas && esAdmin ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
+        <main className={enFacturas && esAdmin && !esDoctor ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
           <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
-            {modulo === 'facturas' && (esAdmin ? <FacturacionInbox /> : <ResumenFacturasModule />)}
-            {modulo === 'comisiones' && <ComisionesModule />}
-            {modulo === 'doctores' && <DoctoresModule />}
-            {modulo === 'master' && <MasterModule />}
-            {modulo === 'residuales' && <ResidualesModule />}
-            {modulo === 'relacionados' && <RelacionadosModule />}
-            {modulo === 'excepciones' && <ExcepcionesModule />}
+            {esDoctor ? (
+              <MiComisionModule doctor={miRol.doctor} />
+            ) : (
+              <>
+                {modulo === 'facturas' && (esAdmin ? <FacturacionInbox /> : <ResumenFacturasModule />)}
+                {modulo === 'comisiones' && <ComisionesModule />}
+                {modulo === 'doctores' && <DoctoresModule />}
+                {modulo === 'master' && <MasterModule />}
+                {modulo === 'residuales' && <ResidualesModule />}
+                {modulo === 'relacionados' && <RelacionadosModule />}
+                {modulo === 'excepciones' && <ExcepcionesModule />}
+              </>
+            )}
           </div>
         </main>
       </div>

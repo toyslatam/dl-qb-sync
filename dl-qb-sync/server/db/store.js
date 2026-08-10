@@ -187,6 +187,21 @@ export async function findDoctorPorNombre(nombre, apellido) {
   return data ?? null;
 }
 
+/** Usado por "Mi Comision": encuentra el doctor vinculado al login de quien esta pidiendo el reporte. */
+export async function findDoctorPorEmail(email) {
+  if (!email) return null;
+  const { data, error } = await supabase.from('doctores').select('*').eq('user_email', email).maybeSingle();
+  assertOk(error, 'findDoctorPorEmail');
+  return data ?? null;
+}
+
+/** Manda el correo de invitacion de Supabase (el doctor pone su propia contraseña al primer login). */
+export async function invitarUsuario(email) {
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+  if (error) throw new Error(`Supabase error (invitarUsuario): ${error.message}`);
+  return data;
+}
+
 export async function createDoctor(doctor) {
   const { data, error } = await supabase.from('doctores').insert(doctor).select().single();
   assertOk(error, 'createDoctor');
