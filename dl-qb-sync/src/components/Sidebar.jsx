@@ -11,6 +11,7 @@ import {
   LogOut,
   Link2,
   ShieldOff,
+  Paperclip,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -18,6 +19,7 @@ const NAV = [
   { key: 'facturas', label: 'Facturas', icon: FileText },
   { key: 'comisiones', label: 'Comisiones', icon: Calculator },
   { key: 'doctores', label: 'Doctores', icon: Stethoscope },
+  { key: 'adjuntos', label: 'Adjuntos', icon: Paperclip },
 ];
 
 const CONFIG_SUBNAV = [

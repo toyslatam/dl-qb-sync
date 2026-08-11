@@ -193,6 +193,59 @@ export async function getInvoicesByDateRange(fechaDesde, fechaHasta) {
   return invoices;
 }
 
+/**
+ * Trae todos los adjuntos (Attachable) de tipo PDF ya subidos a QuickBooks,
+ * indexados por numero de factura -- QuickBooks no deja filtrar Attachable
+ * por la factura a la que esta ligado (AttachableRef no es queryable), pero
+ * el archivo se sube nombrado "CAFE_{numero}.pdf" (numero = DocNumber de la
+ * factura), asi que se usa ese numero al final del nombre para emparejar.
+ * Solo lectura -- para el modulo de Adjuntos.
+ */
+export async function getAdjuntosFacturas() {
+  const adjuntos = [];
+  let startPosition = 1;
+  const pageSize = 1000;
+  while (true) {
+    const result = await qboQuery(`select * from Attachable STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`);
+    const page = result.QueryResponse?.Attachable ?? [];
+    adjuntos.push(...page);
+    if (page.length < pageSize) break;
+    startPosition += pageSize;
+  }
+
+  const porNumero = new Map();
+  for (const a of adjuntos) {
+    if (a.ContentType !== 'application/pdf' || !a.FileName) continue;
+    const match = a.FileName.match(/(\d+)(?=\.\w+$)/);
+    if (!match) continue;
+    // Si hay mas de un adjunto para el mismo numero, se queda con el mas reciente.
+    porNumero.set(match[1], { id: a.Id, fileName: a.FileName });
+  }
+  return porNumero;
+}
+
+/**
+ * Descarga el contenido binario de un adjunto (PDF) por su Id de Attachable.
+ * El endpoint /download de QBO no devuelve el archivo directo: devuelve como
+ * texto plano una URL temporal (financialdocument.platform.intuit.com) que
+ * hay que pedir aparte para obtener los bytes reales del PDF.
+ */
+export async function descargarAdjunto(attachableId) {
+  const accessToken = await ensureAccessToken();
+  const realmId = (process.env.QBO_REALM_ID || '').trim();
+  const res = await withRetry(() =>
+    fetch(`${API_BASE}/v3/company/${realmId}/download/${attachableId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+  );
+  if (!res.ok) throw new Error(`QBO download ${attachableId} failed: ${res.status}`);
+  const tempUrl = (await res.text()).trim();
+
+  const fileRes = await withRetry(() => fetch(tempUrl));
+  if (!fileRes.ok) throw new Error(`Descarga temporal del adjunto ${attachableId} fallo: ${fileRes.status}`);
+  return Buffer.from(await fileRes.arrayBuffer());
+}
+
 const CUENTA_LABORATORIO = (process.env.QBO_CUENTA_LABORATORIO || 'Laboratorios').trim();
 const CUENTA_INSUMOS = (process.env.QBO_CUENTA_INSUMOS || 'Insumos Medicos').trim();
 

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
+import { ZipArchive } from 'archiver';
 import { createClient } from '@supabase/supabase-js';
 import {
   runSyncCycle,
@@ -40,6 +41,7 @@ import {
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
+import { listarAdjuntos } from './sync/adjuntos.js';
 import {
   getAuthorizeUri,
   handleOAuthCallback,
@@ -51,6 +53,7 @@ import {
   getTerms,
   getPaymentMethods,
   getDepositAccounts,
+  descargarAdjunto,
 } from './integrations/quickbooks.js';
 import { getPaciente } from './integrations/dentalink.js';
 
@@ -826,6 +829,60 @@ app.post('/api/comisiones/descargar', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Adjuntos: PDFs de factura ya subidos a QuickBooks (solo lectura) ---
+app.get('/api/adjuntos', async (req, res) => {
+  try {
+    const { desde, hasta } = req.query ?? {};
+    if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
+    res.json(await listarAdjuntos({ fechaDesde: desde, fechaHasta: hasta }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/adjuntos/:attachableId/descargar', async (req, res) => {
+  try {
+    const nombreArchivo = req.query.nombreArchivo || `${req.params.attachableId}.pdf`;
+    const buffer = await descargarAdjunto(req.params.attachableId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Descarga varios adjuntos como un solo .zip. Body: { items: [{ attachableId, nombreArchivo }] }
+app.post('/api/adjuntos/descargar-zip', async (req, res) => {
+  try {
+    const { items } = req.body ?? {};
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'items es requerido' });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="adjuntos.zip"');
+
+    const archive = new ZipArchive();
+    archive.on('error', (err) => {
+      console.error(err);
+      res.destroy(err);
+    });
+    archive.pipe(res);
+
+    for (const item of items) {
+      const buffer = await descargarAdjunto(item.attachableId);
+      archive.append(buffer, { name: item.nombreArchivo || `${item.attachableId}.pdf` });
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.destroy(err);
   }
 });
 
