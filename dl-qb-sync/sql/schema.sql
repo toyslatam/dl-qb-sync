@@ -107,6 +107,21 @@ create table if not exists residuales_ortodoncia (
 -- por eso va aparte como alter table.
 alter table doctores add column if not exists user_email text unique;
 
+-- Asignaciones manuales del modulo de Comisiones (doctor por linea, y a que
+-- factura va cada costo de laboratorio/insumos): antes solo vivian en el
+-- estado del navegador y se perdian al recargar la pagina o al volver a
+-- calcular. tipo+clave es unico por asignacion:
+--  - tipo 'doctor': clave = "idFactura:idLinea", valor = id del doctor.
+--  - tipo 'laboratorio'/'insumos': clave = "idBill:idLinea" del costo, valor = idFactura.
+create table if not exists asignaciones_comision (
+  id bigint generated always as identity primary key,
+  tipo text not null check (tipo in ('doctor', 'laboratorio', 'insumos')),
+  clave text not null,
+  valor text not null,
+  updated_at timestamptz not null default now(),
+  unique (tipo, clave)
+);
+
 -- Hoja "Excepciones" del Excel de comisiones: casos puntuales donde una
 -- prestacion de un doctor especifico NO genera comision (ej. Dra. Ana
 -- Cristina Moreno + "abono Invisalign" -> comision en 0), sin importar el
@@ -146,3 +161,4 @@ alter table metodos_pago_descuento enable row level security;
 alter table residuales_ortodoncia enable row level security;
 alter table clientes_relacionados enable row level security;
 alter table excepciones_comision enable row level security;
+alter table asignaciones_comision enable row level security;

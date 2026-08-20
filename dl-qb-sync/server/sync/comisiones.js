@@ -1,6 +1,6 @@
 import XLSX from 'xlsx';
 import { getInvoicesByDateRange, getCostosOperativos } from '../integrations/quickbooks.js';
-import { getDoctores, getMetodosPagoDescuento, getResiduales, getExcepciones } from '../db/store.js';
+import { getDoctores, getMetodosPagoDescuento, getResiduales, getExcepciones, getAsignacionesComision } from '../db/store.js';
 
 /** Separa "Francisco SousaLennox" en { nombre: 'Francisco', apellido: 'SousaLennox' } (primer espacio). */
 function separarNombreApellido(texto) {
@@ -23,20 +23,18 @@ function normalizar(texto) {
  * de fechas, leyendo SOLO de QuickBooks (facturas ya creadas) + los catalogos
  * de Doctores/Master/Residuales en Supabase. No escribe nada en QuickBooks.
  */
-export async function calcularComisiones({
-  fechaDesde,
-  fechaHasta,
-  asignacionesLaboratorio = {},
-  asignacionesInsumos = {},
-  asignacionesDoctor = {},
-}) {
-  const [invoices, doctores, metodosPago, residuales, excepciones] = await Promise.all([
-    getInvoicesByDateRange(fechaDesde, fechaHasta),
-    getDoctores(),
-    getMetodosPagoDescuento(),
-    getResiduales(),
-    getExcepciones(),
-  ]);
+export async function calcularComisiones({ fechaDesde, fechaHasta }) {
+  const [invoices, doctores, metodosPago, residuales, excepciones, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor] =
+    await Promise.all([
+      getInvoicesByDateRange(fechaDesde, fechaHasta),
+      getDoctores(),
+      getMetodosPagoDescuento(),
+      getResiduales(),
+      getExcepciones(),
+      getAsignacionesComision('laboratorio'),
+      getAsignacionesComision('insumos'),
+      getAsignacionesComision('doctor'),
+    ]);
 
   // doctor_id -> lista de patrones (ya normalizados) que cargan comision $0
   // para ese doctor, sin importar el monto de la linea (hoja "Excepciones"

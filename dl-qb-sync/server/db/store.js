@@ -301,6 +301,29 @@ export async function deleteExcepcion(id) {
   assertOk(error, 'deleteExcepcion');
 }
 
+// --- Asignaciones manuales del modulo de Comisiones (persistentes: antes se
+// perdian al recargar la pagina porque solo vivian en el estado del navegador) ---
+
+/** Trae todas las asignaciones de un tipo, como { clave: valor } (mismo formato que ya usaba el frontend). */
+export async function getAsignacionesComision(tipo) {
+  const { data, error } = await supabase.from('asignaciones_comision').select('clave, valor').eq('tipo', tipo);
+  assertOk(error, 'getAsignacionesComision');
+  return Object.fromEntries((data ?? []).map((r) => [r.clave, r.valor]));
+}
+
+/** valor null/undefined borra la asignacion (equivalente a "quitar"). */
+export async function upsertAsignacionComision(tipo, clave, valor) {
+  if (valor === null || valor === undefined || valor === '') {
+    const { error } = await supabase.from('asignaciones_comision').delete().eq('tipo', tipo).eq('clave', clave);
+    assertOk(error, 'upsertAsignacionComision:delete');
+    return;
+  }
+  const { error } = await supabase
+    .from('asignaciones_comision')
+    .upsert({ tipo, clave, valor: String(valor), updated_at: new Date().toISOString() }, { onConflict: 'tipo,clave' });
+  assertOk(error, 'upsertAsignacionComision');
+}
+
 // --- Clientes relacionados (facturar un paciente bajo otro Customer de QuickBooks) ---
 
 export async function getRelaciones() {

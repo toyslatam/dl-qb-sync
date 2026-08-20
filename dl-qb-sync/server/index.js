@@ -40,6 +40,7 @@ import {
   deleteExcepcion,
   findDoctorPorEmail,
   invitarUsuario,
+  upsertAsignacionComision,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
@@ -796,26 +797,40 @@ app.delete('/api/relacionados/:id', async (req, res) => {
 });
 
 // --- Reporte de Comisiones (solo lectura de QuickBooks, no escribe nada) ---
-// POST (no GET) porque lleva las asignaciones manuales de laboratorio en el body.
+// POST (no GET) porque en el pasado llevaba las asignaciones manuales en el
+// body; ahora esas asignaciones se guardan aparte (ver mas abajo) y se leen
+// solas desde Supabase, asi que sobreviven a un recargo de pagina.
 app.post('/api/comisiones', async (req, res) => {
   try {
     const rolInfo = await resolverRolComisiones(req.user?.email);
     if (rolInfo.rol === 'ninguno') return res.status(403).json({ error: 'No tienes acceso a Comisiones' });
 
-    const { desde, hasta, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor } = req.body ?? {};
+    const { desde, hasta } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    // Solo el admin puede mandar asignaciones manuales -- un doctor no debe
-    // poder influir en como se reparten los costos de otras facturas.
-    const esAdmin = rolInfo.rol === 'admin';
-    let resultado = await calcularComisiones({
-      fechaDesde: desde,
-      fechaHasta: hasta,
-      asignacionesLaboratorio: esAdmin ? asignacionesLaboratorio : {},
-      asignacionesInsumos: esAdmin ? asignacionesInsumos : {},
-      asignacionesDoctor: esAdmin ? asignacionesDoctor : {},
-    });
+    let resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta });
     if (rolInfo.rol === 'doctor') resultado = filtrarComisionesParaDoctor(resultado, rolInfo.doctor);
     res.json(resultado);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Guarda (o quita, si valor es null) una asignacion manual: que doctor va en
+// una linea puntual, o a que factura va un costo de laboratorio/insumos.
+// Solo el admin puede tocar esto -- un doctor no debe poder influir en como
+// se reparten los costos de otras facturas.
+app.post('/api/comisiones/asignar', async (req, res) => {
+  try {
+    const rolInfo = await resolverRolComisiones(req.user?.email);
+    if (rolInfo.rol !== 'admin') return res.status(403).json({ error: 'No tienes acceso a Comisiones' });
+
+    const { tipo, clave, valor } = req.body ?? {};
+    if (!tipo || !clave) return res.status(400).json({ error: 'tipo y clave son requeridos' });
+    if (!['doctor', 'laboratorio', 'insumos'].includes(tipo)) return res.status(400).json({ error: 'tipo invalido' });
+
+    await upsertAsignacionComision(tipo, clave, valor);
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -827,16 +842,9 @@ app.post('/api/comisiones/descargar', async (req, res) => {
     const rolInfo = await resolverRolComisiones(req.user?.email);
     if (rolInfo.rol === 'ninguno') return res.status(403).json({ error: 'No tienes acceso a Comisiones' });
 
-    const { desde, hasta, asignacionesLaboratorio, asignacionesInsumos, asignacionesDoctor } = req.body ?? {};
+    const { desde, hasta } = req.body ?? {};
     if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta son requeridos' });
-    const esAdmin = rolInfo.rol === 'admin';
-    let resultado = await calcularComisiones({
-      fechaDesde: desde,
-      fechaHasta: hasta,
-      asignacionesLaboratorio: esAdmin ? asignacionesLaboratorio : {},
-      asignacionesInsumos: esAdmin ? asignacionesInsumos : {},
-      asignacionesDoctor: esAdmin ? asignacionesDoctor : {},
-    });
+    let resultado = await calcularComisiones({ fechaDesde: desde, fechaHasta: hasta });
     if (rolInfo.rol === 'doctor') resultado = filtrarComisionesParaDoctor(resultado, rolInfo.doctor);
     const buffer = construirExcelComisiones(resultado);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

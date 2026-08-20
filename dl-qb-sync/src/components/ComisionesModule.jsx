@@ -209,9 +209,6 @@ export default function ComisionesModule() {
   const [desde, setDesde] = useState(primerDiaDelMes());
   const [hasta, setHasta] = useState(hoy());
   const [resultado, setResultado] = useState(null);
-  const [asignaciones, setAsignaciones] = useState({}); // indice del costo de laboratorio -> idFactura
-  const [asignacionesInsumos, setAsignacionesInsumos] = useState({}); // indice del costo de insumos -> idFactura
-  const [asignacionesDoctor, setAsignacionesDoctor] = useState({}); // "idFactura:idLinea" -> id del doctor
   const [loading, setLoading] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState('');
@@ -219,18 +216,11 @@ export default function ComisionesModule() {
   const [costoParaAsociar, setCostoParaAsociar] = useState(null); // costo de laboratorio abierto en el lookup
   const [insumoParaAsociar, setInsumoParaAsociar] = useState(null); // costo de insumos abierto en el lookup
 
-  async function calcular(overrides = {}) {
-    const body = {
-      desde,
-      hasta,
-      asignacionesLaboratorio: overrides.laboratorio ?? asignaciones,
-      asignacionesInsumos: overrides.insumos ?? asignacionesInsumos,
-      asignacionesDoctor: overrides.doctor ?? asignacionesDoctor,
-    };
+  async function calcular() {
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch('/api/comisiones', { method: 'POST', body: JSON.stringify(body) });
+      const res = await apiFetch('/api/comisiones', { method: 'POST', body: JSON.stringify({ desde, hasta }) });
       const respuesta = await res.json();
       if (!res.ok) throw new Error(respuesta.error || 'Error desconocido');
       setResultado(respuesta);
@@ -238,6 +228,18 @@ export default function ComisionesModule() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  /** Guarda una asignacion manual en Supabase (persiste entre recargos) y recalcula. */
+  async function asignar(tipo, clave, valor) {
+    setError('');
+    try {
+      const res = await apiFetch('/api/comisiones/asignar', { method: 'POST', body: JSON.stringify({ tipo, clave, valor }) });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar la asignación');
+      await calcular();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -258,28 +260,15 @@ export default function ComisionesModule() {
   }, [pendientesTotal, tab, resultado]);
 
   function asignarLaboratorio(indice, idFactura) {
-    const nuevas = { ...asignaciones };
-    if (idFactura) nuevas[indice] = idFactura;
-    else delete nuevas[indice];
-    setAsignaciones(nuevas);
-    calcular({ laboratorio: nuevas });
+    asignar('laboratorio', indice, idFactura);
   }
 
   function asignarInsumo(indice, idFactura) {
-    const nuevas = { ...asignacionesInsumos };
-    if (idFactura) nuevas[indice] = idFactura;
-    else delete nuevas[indice];
-    setAsignacionesInsumos(nuevas);
-    calcular({ insumos: nuevas });
+    asignar('insumos', indice, idFactura);
   }
 
   function asignarDoctor(idFactura, idLinea, doctorId) {
-    const clave = `${idFactura}:${idLinea}`;
-    const nuevas = { ...asignacionesDoctor };
-    if (doctorId) nuevas[clave] = doctorId;
-    else delete nuevas[clave];
-    setAsignacionesDoctor(nuevas);
-    calcular({ doctor: nuevas });
+    asignar('doctor', `${idFactura}:${idLinea}`, doctorId);
   }
 
   async function descargar() {
@@ -288,7 +277,7 @@ export default function ComisionesModule() {
     try {
       const res = await apiFetch('/api/comisiones/descargar', {
         method: 'POST',
-        body: JSON.stringify({ desde, hasta, asignacionesLaboratorio: asignaciones, asignacionesInsumos, asignacionesDoctor }),
+        body: JSON.stringify({ desde, hasta }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -333,17 +322,7 @@ export default function ComisionesModule() {
             <span className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Hasta</span>
             <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </label>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setAsignaciones({});
-              setAsignacionesInsumos({});
-              setAsignacionesDoctor({});
-              calcular({ laboratorio: {}, insumos: {}, doctor: {} });
-            }}
-            disabled={loading}
-          >
+          <Button variant="primary" size="md" onClick={calcular} disabled={loading}>
             {loading ? <Loader2 size={15} className="animate-spin" /> : <Calculator size={15} />}
             Calcular
           </Button>
@@ -473,7 +452,7 @@ export default function ComisionesModule() {
                             value: d.id,
                             label: `${d.titulo} ${d.nombre} ${d.apellido}`,
                           }))}
-                          value={asignacionesDoctor[`${s.idFactura}:${s.idLinea}`]}
+                          value={undefined}
                           onChange={(v) => asignarDoctor(s.idFactura, s.idLinea, v)}
                           placeholder="(elegir doctor)"
                         />
