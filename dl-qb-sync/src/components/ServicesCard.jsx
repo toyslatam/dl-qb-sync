@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, Trash2, Plus, ListChecks, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, Trash2, Plus, ListChecks, X, Search } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 import { Button } from './ui/Button.jsx';
 import EntitySearchBox from './EntitySearchBox.jsx';
@@ -122,6 +122,15 @@ export default function ServicesCard({ lineas, busy, onEditar, onEliminar, onEli
   const [nueva, setNueva] = useState({ nombre: '', precio: '', cantidad: 1 });
   const [seleccionando, setSeleccionando] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
+  const [busqueda, setBusqueda] = useState('');
+
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return lineas;
+    return lineas.filter((l) =>
+      `${l.nombre} ${l.qbItemName ?? ''} ${l.qbItemId ?? ''} ${l.precio ?? ''}`.toLowerCase().includes(q)
+    );
+  }, [lineas, busqueda]);
 
   function toggleSeleccion(idDetalle) {
     setSeleccionadas((prev) => {
@@ -135,11 +144,13 @@ export default function ServicesCard({ lineas, busy, onEditar, onEliminar, onEli
   function empezarSeleccion() {
     setSeleccionando(true);
     setSeleccionadas(new Set());
+    setBusqueda('');
   }
 
   function cancelarSeleccion() {
     setSeleccionando(false);
     setSeleccionadas(new Set());
+    setBusqueda('');
   }
 
   async function eliminarTodas() {
@@ -183,29 +194,48 @@ export default function ServicesCard({ lineas, busy, onEditar, onEliminar, onEli
       </CardHeader>
       <CardContent className="space-y-2.5">
         {seleccionando && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-primary-light px-3 py-2.5 text-[0.82rem] text-primary">
-            <span className="font-medium">{seleccionadas.size} de {lineas.length} seleccionadas</span>
-            <div className="ml-auto flex gap-1.5">
-              <Button variant="ghost" size="sm" onClick={() => setSeleccionadas(new Set(lineas.map((l) => l.idDetalle)))}>
-                Todas
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSeleccionadas(new Set())}>
-                Ninguna
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={mantenerSeleccionadas}
-                disabled={busy || seleccionadas.size === 0 || seleccionadas.size === lineas.length}
-              >
-                <Trash2 size={13} />
-                Borrar el resto ({lineas.length - seleccionadas.size})
-              </Button>
+          <div className="space-y-2 rounded-xl bg-primary-light px-3 py-2.5">
+            <div className="relative">
+              <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-primary/50" />
+              <input
+                autoFocus
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar prestación…"
+                className="h-8 w-full rounded-lg border border-primary/20 bg-white pl-7 pr-2 text-[0.82rem] focus:border-primary focus:outline-none"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[0.82rem] text-primary">
+              <span className="font-medium">
+                {seleccionadas.size} de {lineas.length} seleccionadas
+                {busqueda && <> · {visibles.length} visible(s)</>}
+              </span>
+              <div className="ml-auto flex gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSeleccionadas((prev) => new Set([...prev, ...visibles.map((l) => l.idDetalle)]))}
+                >
+                  {busqueda ? 'Seleccionar visibles' : 'Todas'}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSeleccionadas(new Set())}>
+                  Ninguna
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={mantenerSeleccionadas}
+                  disabled={busy || seleccionadas.size === 0 || seleccionadas.size === lineas.length}
+                >
+                  <Trash2 size={13} />
+                  Borrar el resto ({lineas.length - seleccionadas.size})
+                </Button>
+              </div>
             </div>
           </div>
         )}
 
-        {lineas.map((linea) => (
+        {(seleccionando ? visibles : lineas).map((linea) => (
           <LineaCard
             key={linea.idDetalle}
             linea={linea}
