@@ -141,6 +141,15 @@ export default function FacturacionInbox() {
     return ejecutar(() => api(`/api/review-queue/${selected.id}/lineas/${idDetalle}`, { method: 'DELETE' }));
   }
 
+  function eliminarLineas(idDetalles) {
+    return ejecutar(() =>
+      api(`/api/review-queue/${selected.id}/lineas/eliminar-varias`, {
+        method: 'POST',
+        body: JSON.stringify({ idDetalles }),
+      })
+    );
+  }
+
   function agregarLinea(nuevaLinea) {
     return ejecutar(() =>
       api(`/api/review-queue/${selected.id}/lineas`, {
@@ -335,6 +344,7 @@ export default function FacturacionInbox() {
                 busy={busy}
                 onEditar={editarLinea}
                 onEliminar={eliminarLinea}
+                onEliminarVarias={eliminarLineas}
                 onAsignarItem={asignarItem}
                 onCrearItem={crearItem}
                 onAgregarLinea={agregarLinea}

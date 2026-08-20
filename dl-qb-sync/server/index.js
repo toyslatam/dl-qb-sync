@@ -280,6 +280,27 @@ app.delete('/api/review-queue/:idPago/lineas/:idDetalle', async (req, res) => {
   }
 });
 
+// Eliminar varias lineas del borrador de una vez (ej. quedarse solo con las
+// prestaciones seleccionadas cuando el pago trae decenas de lineas).
+app.post('/api/review-queue/:idPago/lineas/eliminar-varias', async (req, res) => {
+  try {
+    const row = await getDraft(req.params.idPago);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+    const { idDetalles } = req.body ?? {};
+    if (!Array.isArray(idDetalles)) return res.status(400).json({ error: 'idDetalles es requerido' });
+
+    const draft = row.draft;
+    const aEliminar = new Set(idDetalles.map(String));
+    draft.lineas = draft.lineas.filter((l) => !aEliminar.has(String(l.idDetalle)));
+
+    await upsertDraft(req.params.idPago, row.id_paciente, draft);
+    res.json(draft);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Agregar una linea manual al borrador (ej. un cargo que no vino de Dentalink).
 app.post('/api/review-queue/:idPago/lineas', async (req, res) => {
   try {
