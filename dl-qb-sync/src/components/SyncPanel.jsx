@@ -118,6 +118,12 @@ export default function SyncPanel({ onSynced }) {
                 <td>Clientes completados</td>
                 <td>{result.actualizados}</td>
               </tr>
+              {result.vinculados > 0 && (
+                <tr>
+                  <td>Vinculados (ya existían con otro nombre sin Suffix)</td>
+                  <td>{result.vinculados}</td>
+                </tr>
+              )}
               <tr>
                 <td>Sin cambios</td>
                 <td>{result.sinCambios}</td>

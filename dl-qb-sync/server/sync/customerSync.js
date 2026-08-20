@@ -1,5 +1,5 @@
 import { getPagos, getPaciente } from '../integrations/dentalink.js';
-import { createCustomer, updateCustomer, getCustomerById } from '../integrations/quickbooks.js';
+import { createCustomer, updateCustomer, getCustomerById, searchCustomers } from '../integrations/quickbooks.js';
 import { matchCustomer, refreshCustomerIndex } from '../matching/customerMatch.js';
 import { upsertCustomerIndex } from '../db/store.js';
 
@@ -9,16 +9,21 @@ function hoyPanama() {
   return new Date(Date.now() + PANAMA_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function esNumerico(texto) {
-  return /^\d+$/.test((texto ?? '').trim());
+/**
+ * Lo que separa una cedula (aunque venga con guiones, ej. "8-344-34") de un
+ * pasaporte/permiso de extranjero (ej. "E-8-109609", "PE-...", "YB5149452")
+ * es si tiene alguna letra -- los guiones por si solos NO cuentan.
+ */
+function tieneLetras(texto) {
+  return /[a-zA-Z]/.test(texto ?? '');
 }
 
 /**
  * Arma el Customer completo a partir de un paciente de Dentalink, replicando
  * el flujo de Power Automate ya en uso. El RUT puede ser una cedula (solo
- * numeros) o un pasaporte (con letras):
- *  - Cedula: va completa en AlternatePhone ("Otro" en QuickBooks).
- *  - Pasaporte: solo los digitos en AlternatePhone, y el pasaporte completo
+ * numeros, con o sin guiones) o un pasaporte/permiso de extranjero (con letras):
+ *  - Cedula: va completa (con guiones y todo) en AlternatePhone ("Otro" en QuickBooks).
+ *  - Pasaporte: solo los digitos en AlternatePhone, y el valor completo
  *    queda visible en CompanyName ("Razon social") como "{nombre} {apellidos}Pass: {rut}".
  */
 function payloadCompleto(paciente) {
@@ -39,11 +44,11 @@ function payloadCompleto(paciente) {
     payload.BillAddr = { City: paciente.ciudad || '', Line1: paciente.direccion || '' };
   }
   if (rut) {
-    if (esNumerico(rut)) {
-      payload.AlternatePhone = { FreeFormNumber: rut };
-    } else {
+    if (tieneLetras(rut)) {
       payload.AlternatePhone = { FreeFormNumber: rut.replace(/\D/g, '') };
       payload.CompanyName = `${nombre} ${apellidos}Pass: ${rut}`;
+    } else {
+      payload.AlternatePhone = { FreeFormNumber: rut };
     }
   }
   return payload;
@@ -77,6 +82,34 @@ function payloadSoloFaltantes(existente, paciente) {
   return hayCambios ? payload : null;
 }
 
+function esErrorNombreDuplicado(err) {
+  return err.message.includes('"code":"6240"');
+}
+
+/**
+ * El paciente no matcheo por Suffix, pero QuickBooks rechazo la creacion
+ * porque ya existe un Customer con exactamente ese mismo nombre -- suele
+ * pasar con clientes creados antes de que existiera este flujo, sin el
+ * Suffix puesto. En vez de fallar, se busca por nombre, y si hay exactamente
+ * un candidato se vincula (Suffix) y se completan sus campos vacios.
+ */
+async function vincularExistentePorNombre(idPaciente, paciente, payloadDeseado) {
+  const candidatos = await searchCustomers(payloadDeseado.DisplayName);
+  const exactos = candidatos.filter((c) => c.DisplayName === payloadDeseado.DisplayName);
+  if (exactos.length !== 1) {
+    throw new Error(
+      `Nombre duplicado en QuickBooks y no se pudo vincular automaticamente ` +
+        `(${exactos.length} candidatos para "${payloadDeseado.DisplayName}")`
+    );
+  }
+
+  const existente = exactos[0];
+  const payload = payloadSoloFaltantes(existente, paciente) ?? { Id: existente.Id, SyncToken: existente.SyncToken };
+  if (!existente.Suffix) payload.Suffix = payloadDeseado.Suffix;
+  await updateCustomer(payload);
+  await upsertCustomerIndex(idPaciente, existente.Id, existente.DisplayName);
+}
+
 /**
  * Crea o completa los Customers de QuickBooks para los pacientes que tuvieron
  * un pago en el rango dado (por defecto, hoy). Nunca borra ni sobreescribe un
@@ -91,7 +124,7 @@ export async function sincronizarPacientesDelDia({ fechaDesde, fechaHasta } = {}
   const pagos = await getPagos({ fechaDesde: desde, fechaHasta: hasta });
   const idsUnicos = [...new Set(pagos.map((p) => p.id_paciente))];
 
-  const resultado = { pacientesRevisados: idsUnicos.length, creados: 0, actualizados: 0, sinCambios: 0, errores: [] };
+  const resultado = { pacientesRevisados: idsUnicos.length, creados: 0, actualizados: 0, vinculados: 0, sinCambios: 0, errores: [] };
 
   for (const idPaciente of idsUnicos) {
     try {
@@ -100,9 +133,15 @@ export async function sincronizarPacientesDelDia({ fechaDesde, fechaHasta } = {}
 
       if (!match) {
         const payload = payloadCompleto(paciente);
-        const created = await createCustomer(payload);
-        await upsertCustomerIndex(idPaciente, created.Customer.Id, payload.DisplayName);
-        resultado.creados += 1;
+        try {
+          const created = await createCustomer(payload);
+          await upsertCustomerIndex(idPaciente, created.Customer.Id, payload.DisplayName);
+          resultado.creados += 1;
+        } catch (err) {
+          if (!esErrorNombreDuplicado(err)) throw err;
+          await vincularExistentePorNombre(idPaciente, paciente, payload);
+          resultado.vinculados += 1;
+        }
         continue;
       }
 

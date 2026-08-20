@@ -917,12 +917,12 @@ app.listen(port, () => {
   console.log(`dl-qb-sync API escuchando en http://127.0.0.1:${port}`);
 });
 
-// Todos los dias a las 6:30am hora de Panama: crea/completa en QuickBooks
+// Todos los dias a las 6:30pm hora de Panama: crea/completa en QuickBooks
 // los Customers de los pacientes que tengan un pago ese dia. Corre dentro de
 // este mismo proceso (sin infraestructura de cron aparte) -- requiere que el
 // servicio quede siempre activo en Railway, no en modo "sleep".
 cron.schedule(
-  '30 6 * * *',
+  '30 18 * * *',
   async () => {
     console.log('[cron] Sincronizando pacientes de Dentalink -> QuickBooks...');
     try {
