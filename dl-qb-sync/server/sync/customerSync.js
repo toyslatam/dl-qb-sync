@@ -75,9 +75,23 @@ function payloadSoloFaltantes(existente, paciente) {
   agregarSiFalta(existente.Notes, 'Notes', completo.Notes);
   agregarSiFalta(existente.PrimaryEmailAddr?.Address, 'PrimaryEmailAddr', completo.PrimaryEmailAddr);
   agregarSiFalta(existente.PrimaryPhone?.FreeFormNumber, 'PrimaryPhone', completo.PrimaryPhone);
-  agregarSiFalta(existente.BillAddr?.Line1 || existente.BillAddr?.City, 'BillAddr', completo.BillAddr);
   agregarSiFalta(existente.AlternatePhone?.FreeFormNumber, 'AlternatePhone', completo.AlternatePhone);
   agregarSiFalta(existente.CompanyName, 'CompanyName', completo.CompanyName);
+
+  // BillAddr tiene dos sub-campos (Ciudad, Direccion) -- se completan por
+  // separado, no todo-o-nada, para no dejar la direccion vacia para siempre
+  // solo porque la ciudad ya estaba puesta (o viceversa).
+  if (completo.BillAddr) {
+    const faltaCity = !existente.BillAddr?.City && completo.BillAddr.City;
+    const faltaLine1 = !existente.BillAddr?.Line1 && completo.BillAddr.Line1;
+    if (faltaCity || faltaLine1) {
+      payload.BillAddr = {
+        City: existente.BillAddr?.City || completo.BillAddr.City || '',
+        Line1: existente.BillAddr?.Line1 || completo.BillAddr.Line1 || '',
+      };
+      hayCambios = true;
+    }
+  }
 
   return hayCambios ? payload : null;
 }
@@ -86,16 +100,27 @@ function esErrorNombreDuplicado(err) {
   return err.message.includes('"code":"6240"');
 }
 
+/** QuickBooks a veces guarda nombres con doble espacio (GivenName+FamilyName concatenados). */
+function normalizarEspacios(texto) {
+  return (texto ?? '').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * El paciente no matcheo por Suffix, pero QuickBooks rechazo la creacion
  * porque ya existe un Customer con exactamente ese mismo nombre -- suele
  * pasar con clientes creados antes de que existiera este flujo, sin el
  * Suffix puesto. En vez de fallar, se busca por nombre, y si hay exactamente
- * un candidato se vincula (Suffix) y se completan sus campos vacios.
+ * un candidato SIN Suffix (es decir, sin dueño todavia) se vincula y se
+ * completan sus campos vacios.
+ *
+ * Si el candidato ya tiene un Suffix (esta vinculado a OTRO paciente de
+ * Dentalink), no se toca: sería un homonimo, y vincularlo igual atribuiria
+ * los pagos de este paciente al Customer de otra persona. Queda para
+ * revision manual en vez de arriesgar un cruce de datos entre pacientes.
  */
 async function vincularExistentePorNombre(idPaciente, paciente, payloadDeseado) {
   const candidatos = await searchCustomers(payloadDeseado.DisplayName);
-  const exactos = candidatos.filter((c) => c.DisplayName === payloadDeseado.DisplayName);
+  const exactos = candidatos.filter((c) => normalizarEspacios(c.DisplayName) === normalizarEspacios(payloadDeseado.DisplayName));
   if (exactos.length !== 1) {
     throw new Error(
       `Nombre duplicado en QuickBooks y no se pudo vincular automaticamente ` +
@@ -104,6 +129,13 @@ async function vincularExistentePorNombre(idPaciente, paciente, payloadDeseado) 
   }
 
   const existente = exactos[0];
+  if (existente.Suffix && existente.Suffix !== payloadDeseado.Suffix) {
+    throw new Error(
+      `Existe un Customer "${payloadDeseado.DisplayName}" pero ya esta vinculado a otro paciente de Dentalink ` +
+        `(id ${existente.Suffix}) -- posible homonimo, requiere revision manual.`
+    );
+  }
+
   const payload = payloadSoloFaltantes(existente, paciente) ?? { Id: existente.Id, SyncToken: existente.SyncToken };
   if (!existente.Suffix) payload.Suffix = payloadDeseado.Suffix;
   await updateCustomer(payload);
