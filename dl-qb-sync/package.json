@@ -27,6 +27,7 @@
     "framer-motion": "^12.42.2",
     "intuit-oauth": "^4.1.1",
     "lucide-react": "^1.24.0",
+    "node-cron": "^4.6.0",
     "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

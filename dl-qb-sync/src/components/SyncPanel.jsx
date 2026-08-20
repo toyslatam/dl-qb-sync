@@ -45,6 +45,24 @@ export default function SyncPanel({ onSynced }) {
     }
   }
 
+  async function handleSyncClientes() {
+    setRunning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await apiFetch('/api/sync/pacientes', {
+        method: 'POST',
+        body: JSON.stringify({ desde: desde || undefined, hasta: hasta || undefined }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error desconocido');
+      setResult(await res.json());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRunning(false);
+    }
+  }
+
   return (
     <section className="card">
       <h2>Sincronizar facturas</h2>
@@ -72,8 +90,51 @@ export default function SyncPanel({ onSynced }) {
         </button>
       </div>
 
+      <hr style={{ margin: 'var(--space-3) 0', border: 'none', borderTop: '1px solid var(--border, #e2e8f0)' }} />
+
+      <h2>Sincronizar clientes (Dentalink → QuickBooks)</h2>
+      <p style={{ marginBottom: 'var(--space-2)' }}>
+        Crea o completa los Customers de los pacientes que tuvieron un pago en el rango de arriba (por defecto, hoy). Esto
+        también corre solo todos los días a las 6:30am.
+      </p>
+      <button onClick={handleSyncClientes} disabled={running}>
+        {running ? 'Sincronizando…' : 'Sincronizar clientes ahora'}
+      </button>
+
       {error && <p className="text-danger">{error}</p>}
-      {result && (
+      {result && 'pacientesRevisados' in result && (
+        <div className="table-wrap" style={{ marginTop: 'var(--space-3)' }}>
+          <table className="data-table" style={{ minWidth: 'auto' }}>
+            <tbody>
+              <tr>
+                <td>Pacientes revisados</td>
+                <td>{result.pacientesRevisados}</td>
+              </tr>
+              <tr>
+                <td>Clientes creados</td>
+                <td>{result.creados}</td>
+              </tr>
+              <tr>
+                <td>Clientes completados</td>
+                <td>{result.actualizados}</td>
+              </tr>
+              <tr>
+                <td>Sin cambios</td>
+                <td>{result.sinCambios}</td>
+              </tr>
+              {result.errores?.length > 0 && (
+                <tr>
+                  <td>Errores</td>
+                  <td>
+                    <span className="badge badge-warning">{result.errores.length}</span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {result && 'enCola' in result && (
         <div className="table-wrap" style={{ marginTop: 'var(--space-3)' }}>
           <table className="data-table" style={{ minWidth: 'auto' }}>
             <tbody>

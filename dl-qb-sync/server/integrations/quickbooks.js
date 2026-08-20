@@ -331,6 +331,17 @@ export function createCustomer(customerPayload) {
   return qboFetch('/customer', { method: 'POST', body: customerPayload });
 }
 
+/** Actualizacion parcial (sparse) de un Customer existente -- requiere Id y SyncToken vigentes. */
+export function updateCustomer(customerPayload) {
+  return qboFetch('/customer', { method: 'POST', body: { ...customerPayload, sparse: true } });
+}
+
+/** Trae un Customer puntual con su SyncToken actual (necesario antes de cualquier update). */
+export async function getCustomerById(id) {
+  const result = await qboQuery(`select * from Customer where Id = '${id}'`);
+  return result.QueryResponse?.Customer?.[0] ?? null;
+}
+
 export function createInvoice(invoicePayload) {
   return qboFetch('/invoice', { method: 'POST', body: invoicePayload });
 }

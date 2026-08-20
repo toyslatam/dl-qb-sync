@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { ZipArchive } from 'archiver';
+import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import {
   runSyncCycle,
@@ -12,6 +13,7 @@ import {
   listarPagosDelDia,
   procesarPagoIndividual,
 } from './sync/invoiceSync.js';
+import { sincronizarPacientesDelDia } from './sync/customerSync.js';
 import {
   getPendingDrafts,
   getDraft,
@@ -136,6 +138,20 @@ app.post('/api/sync', async (req, res) => {
   try {
     const { desde, hasta } = req.body ?? {};
     const result = await runSyncCycle({ fechaDesde: desde, fechaHasta: hasta });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crea/completa en QuickBooks los Customers de los pacientes con pago en el
+// rango dado (por defecto hoy). Tambien corre solo, todos los dias a las
+// 6:30am hora de Panama (ver cron mas abajo).
+app.post('/api/sync/pacientes', async (req, res) => {
+  try {
+    const { desde, hasta } = req.body ?? {};
+    const result = await sincronizarPacientesDelDia({ fechaDesde: desde, fechaHasta: hasta });
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -900,3 +916,21 @@ const port = process.env.PORT || 8765;
 app.listen(port, () => {
   console.log(`dl-qb-sync API escuchando en http://127.0.0.1:${port}`);
 });
+
+// Todos los dias a las 6:30am hora de Panama: crea/completa en QuickBooks
+// los Customers de los pacientes que tengan un pago ese dia. Corre dentro de
+// este mismo proceso (sin infraestructura de cron aparte) -- requiere que el
+// servicio quede siempre activo en Railway, no en modo "sleep".
+cron.schedule(
+  '30 6 * * *',
+  async () => {
+    console.log('[cron] Sincronizando pacientes de Dentalink -> QuickBooks...');
+    try {
+      const resultado = await sincronizarPacientesDelDia();
+      console.log('[cron] Pacientes sincronizados:', resultado);
+    } catch (err) {
+      console.error('[cron] Error sincronizando pacientes:', err);
+    }
+  },
+  { timezone: 'America/Panama' }
+);
