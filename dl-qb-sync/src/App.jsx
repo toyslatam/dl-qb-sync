@@ -59,8 +59,9 @@ export default function App() {
       .catch(() => setMiRol({ rol: 'ninguno' }));
   }, [session]);
 
-  if (session === undefined || miRol === undefined) return null;
+  if (session === undefined) return null;
   if (!session) return <Login />;
+  if (miRol === undefined) return null;
 
   const esAdmin = ADMIN_EMAILS.includes(session.user.email);
   const esDoctor = miRol.rol === 'doctor';
