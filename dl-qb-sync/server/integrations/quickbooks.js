@@ -441,16 +441,6 @@ function likeTodasLasPalabras(campo, texto) {
   return palabras.map((p) => `${campo} LIKE '%${escapeQboLiteral(p)}%'`).join(' AND ');
 }
 
-/**
- * Busca UN Customer puntual por su Suffix (id de paciente de Dentalink),
- * sin traer el resto del catalogo. Para cuando un pago no matcheo contra el
- * indice local (ej. cliente creado despues del ultimo refresh) -- evita
- * tener que refrescar TODOS los Customers solo para ver el detalle de un pago.
- */
-export async function getCustomerBySuffix(suffix) {
-  const result = await qboQuery(`select * from Customer where Suffix = '${escapeQboLiteral(suffix)}' and Active = true`);
-  return result.QueryResponse?.Customer?.[0] ?? null;
-}
 
 /** Busca Customers activos por nombre (para asignar manualmente desde la cola de revision). */
 export async function searchCustomers(nameFragment) {

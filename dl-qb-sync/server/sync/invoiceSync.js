@@ -1,6 +1,6 @@
 import { getPagos, getPagosByPaciente, getPagoPorId, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
 import { createInvoice } from '../integrations/quickbooks.js';
-import { refreshCustomerIndex, matchCustomerConFallback } from '../matching/customerMatch.js';
+import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
 import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem, findRelacion } from '../db/store.js';
 
@@ -145,7 +145,7 @@ function sugerirDoctor(lineas, pago) {
 async function resolveCustomerMatch(idPaciente) {
   const relacion = await findRelacion(idPaciente);
   if (relacion) return { qbCustomerId: relacion.qb_customer_id, qbDisplayName: relacion.qb_display_name };
-  return matchCustomerConFallback(idPaciente);
+  return matchCustomer(idPaciente);
 }
 
 async function buildDraft(idPaciente, pago, lineas) {
@@ -333,9 +333,10 @@ export async function procesarPagoIndividual(idPago) {
   // OJO: antes esto refrescaba TODO el indice de Customers/Items de
   // QuickBooks (cientos de registros) en cada clic sobre un pago individual
   // -- lento, y QuickBooks a veces respondia 504 (stream timeout) con el
-  // volumen actual de clientes. Ahora buildDraft/resolveCustomerMatch busca
-  // en QuickBooks solo el cliente de ESTE pago si no esta en el indice local
-  // (matchCustomerConFallback), en vez de traer a todos los clientes.
+  // volumen actual de clientes. El indice ya se mantiene al dia solo (cron
+  // de clientes a las 6:30pm, boton "Sincronizar", runSyncCycle); si el
+  // cliente/item de este pago no esta ahi todavia, se asigna a mano desde la
+  // cola de revision (buscar por nombre o crear), como ya se hacia antes.
   const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
   const draft = await buildDraft(pago.id_paciente, pago, lineas);
 

@@ -1,5 +1,5 @@
-import { getAllCustomers, getCustomerBySuffix } from '../integrations/quickbooks.js';
-import { clearCustomerIndex, upsertCustomerIndexBulk, upsertCustomerIndex, findQbCustomer } from '../db/store.js';
+import { getAllCustomers } from '../integrations/quickbooks.js';
+import { clearCustomerIndex, upsertCustomerIndexBulk, findQbCustomer } from '../db/store.js';
 
 /** El ID de paciente de Dentalink vive en el campo real "Suffix" del Customer en QuickBooks. */
 export function extractDentalinkId(customer) {
@@ -26,24 +26,16 @@ export async function refreshCustomerIndex() {
   return { total: customers.length, indexed: porId.size };
 }
 
-/** Devuelve { qbCustomerId, qbDisplayName } o null si el paciente no matchea con ningun Customer. */
+/**
+ * Devuelve { qbCustomerId, qbDisplayName } o null si el paciente no matchea
+ * con ningun Customer. Solo lee del indice local (customer_index en
+ * Supabase) -- QuickBooks NO permite filtrar Customer por Suffix via query
+ * ("property 'Suffix' is not queryable"), asi que no existe forma de buscar
+ * un paciente puntual en vivo sin traer a todos los Customers. El indice se
+ * mantiene al dia solo (cron de clientes a las 6:30pm, boton "Sincronizar",
+ * runSyncCycle); si un paciente no esta ahi todavia, se asigna a mano desde
+ * la cola de revision (buscar por nombre o crear cliente), como ya se hacia.
+ */
 export function matchCustomer(idPaciente) {
   return findQbCustomer(String(idPaciente));
-}
-
-/**
- * Igual que matchCustomer, pero si el indice local no lo tiene, busca ESE
- * paciente puntual directo en QuickBooks (por Suffix) en vez de refrescar
- * todo el catalogo -- pensado para traer el detalle de un solo pago, donde
- * refrescar cientos de Customers solo para uno es lento e innecesario.
- */
-export async function matchCustomerConFallback(idPaciente) {
-  const enCache = await matchCustomer(idPaciente);
-  if (enCache) return enCache;
-
-  const customer = await getCustomerBySuffix(idPaciente);
-  if (!customer) return null;
-
-  await upsertCustomerIndex(idPaciente, customer.Id, customer.DisplayName);
-  return { qbCustomerId: customer.Id, qbDisplayName: customer.DisplayName };
 }
