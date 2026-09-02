@@ -1,5 +1,5 @@
-import { getAllCustomers } from '../integrations/quickbooks.js';
-import { clearCustomerIndex, upsertCustomerIndexBulk, findQbCustomer } from '../db/store.js';
+import { getAllCustomers, getCustomerBySuffix } from '../integrations/quickbooks.js';
+import { clearCustomerIndex, upsertCustomerIndexBulk, upsertCustomerIndex, findQbCustomer } from '../db/store.js';
 
 /** El ID de paciente de Dentalink vive en el campo real "Suffix" del Customer en QuickBooks. */
 export function extractDentalinkId(customer) {
@@ -29,4 +29,21 @@ export async function refreshCustomerIndex() {
 /** Devuelve { qbCustomerId, qbDisplayName } o null si el paciente no matchea con ningun Customer. */
 export function matchCustomer(idPaciente) {
   return findQbCustomer(String(idPaciente));
+}
+
+/**
+ * Igual que matchCustomer, pero si el indice local no lo tiene, busca ESE
+ * paciente puntual directo en QuickBooks (por Suffix) en vez de refrescar
+ * todo el catalogo -- pensado para traer el detalle de un solo pago, donde
+ * refrescar cientos de Customers solo para uno es lento e innecesario.
+ */
+export async function matchCustomerConFallback(idPaciente) {
+  const enCache = await matchCustomer(idPaciente);
+  if (enCache) return enCache;
+
+  const customer = await getCustomerBySuffix(idPaciente);
+  if (!customer) return null;
+
+  await upsertCustomerIndex(idPaciente, customer.Id, customer.DisplayName);
+  return { qbCustomerId: customer.Id, qbDisplayName: customer.DisplayName };
 }

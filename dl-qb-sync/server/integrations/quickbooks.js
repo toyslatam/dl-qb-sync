@@ -28,13 +28,44 @@ const TRANSIENT_ERROR_CODES = new Set(['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT',
 
 function isTransientNetworkError(err) {
   const code = err?.code || err?.cause?.code;
-  return TRANSIENT_ERROR_CODES.has(code);
+  return TRANSIENT_ERROR_CODES.has(code) || err?.name === 'AbortError' || err?.type === 'aborted';
+}
+
+/**
+ * Un 5xx de QuickBooks (502/503/504 "stream timeout", etc.) es un problema
+ * transitorio del lado de Intuit, no un error de negocio -- confirmado en
+ * vivo: hasta una consulta puntual de un solo Customer devolvio 504.
+ * qboFetch marca el error con .qboStatus para que esto lo reconozca.
+ */
+function esErrorTransitorioQBO(err) {
+  if (isTransientNetworkError(err)) return true;
+  return typeof err?.qboStatus === 'number' && err.qboStatus >= 500;
+}
+
+const QBO_TIMEOUT_MS = 25_000;
+
+/**
+ * fetch() de node-fetch no tiene timeout por defecto -- si QuickBooks se
+ * queda colgado sin responder (ni con exito ni con error), la peticion
+ * podia esperar indefinidamente y withRetry nunca llegaba a reintentar.
+ * Con AbortController, un intento colgado se corta a los 25s y cuenta como
+ * error transitorio (arriba), asi que si reintenta normalmente.
+ */
+async function fetchConTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QBO_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
  * Reintenta operaciones de red ante cortes intermitentes (comunes con
- * firewalls/EDR corporativos que a veces bloquean la primera resolucion DNS).
- * No reintenta errores de negocio (credenciales invalidas, 4xx de QuickBooks).
+ * firewalls/EDR corporativos que a veces bloquean la primera resolucion DNS)
+ * y ante 5xx transitorios de QuickBooks. No reintenta errores de negocio
+ * (credenciales invalidas, 4xx de QuickBooks).
  */
 async function withRetry(fn, { attempts = 3, delayMs = 1000 } = {}) {
   let lastErr;
@@ -43,7 +74,7 @@ async function withRetry(fn, { attempts = 3, delayMs = 1000 } = {}) {
       return await fn();
     } catch (err) {
       lastErr = err;
-      if (!isTransientNetworkError(err) || i === attempts - 1) throw err;
+      if (!esErrorTransitorioQBO(err) || i === attempts - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, delayMs * (i + 1)));
     }
   }
@@ -138,20 +169,30 @@ async function qboFetch(path, { method = 'GET', body } = {}) {
   // minorversion fija: sin ella, POST usa una version vieja de la API cuyo
   // manejo de impuestos automaticos (AST) difiere y puede rechazar TaxCodeRef.
   const separator = path.includes('?') ? '&' : '?';
-  const res = await withRetry(() =>
-    fetch(`${API_BASE}/v3/company/${realmId}${path}${separator}minorversion=65`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+  // El chequeo de status va DENTRO del bloque que reintenta -- un 5xx no
+  // lanza excepcion en fetch() (la respuesta llego bien, solo con status de
+  // error), asi que si el chequeo quedara afuera, withRetry nunca se
+  // enteraria y jamas reintentaria un 504 de QuickBooks.
+  const res = await withRetry(
+    async () => {
+      const r = await fetchConTimeout(`${API_BASE}/v3/company/${realmId}${path}${separator}minorversion=65`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!r.ok) {
+        const err = new Error(`QBO ${method} ${path} failed: ${r.status} ${await r.text()}`);
+        err.qboStatus = r.status;
+        throw err;
+      }
+      return r;
+    },
+    { attempts: 4, delayMs: 1500 }
   );
-  if (!res.ok) {
-    throw new Error(`QBO ${method} ${path} failed: ${res.status} ${await res.text()}`);
-  }
   return res.json();
 }
 
@@ -398,6 +439,17 @@ function escapeQboLiteral(value) {
 function likeTodasLasPalabras(campo, texto) {
   const palabras = texto.trim().split(/\s+/).filter(Boolean);
   return palabras.map((p) => `${campo} LIKE '%${escapeQboLiteral(p)}%'`).join(' AND ');
+}
+
+/**
+ * Busca UN Customer puntual por su Suffix (id de paciente de Dentalink),
+ * sin traer el resto del catalogo. Para cuando un pago no matcheo contra el
+ * indice local (ej. cliente creado despues del ultimo refresh) -- evita
+ * tener que refrescar TODOS los Customers solo para ver el detalle de un pago.
+ */
+export async function getCustomerBySuffix(suffix) {
+  const result = await qboQuery(`select * from Customer where Suffix = '${escapeQboLiteral(suffix)}' and Active = true`);
+  return result.QueryResponse?.Customer?.[0] ?? null;
 }
 
 /** Busca Customers activos por nombre (para asignar manualmente desde la cola de revision). */

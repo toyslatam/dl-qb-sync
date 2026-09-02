@@ -1,6 +1,6 @@
 import { getPagos, getPagosByPaciente, getPagoPorId, getTratamientosByPaciente, getDetalleTratamiento } from '../integrations/dentalink.js';
 import { createInvoice } from '../integrations/quickbooks.js';
-import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
+import { refreshCustomerIndex, matchCustomerConFallback } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
 import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem, findRelacion } from '../db/store.js';
 
@@ -145,7 +145,7 @@ function sugerirDoctor(lineas, pago) {
 async function resolveCustomerMatch(idPaciente) {
   const relacion = await findRelacion(idPaciente);
   if (relacion) return { qbCustomerId: relacion.qb_customer_id, qbDisplayName: relacion.qb_display_name };
-  return matchCustomer(idPaciente);
+  return matchCustomerConFallback(idPaciente);
 }
 
 async function buildDraft(idPaciente, pago, lineas) {
@@ -330,9 +330,12 @@ export async function procesarPagoIndividual(idPago) {
   if (!pago) throw new Error(`Pago ${idPago} no encontrado en Dentalink`);
   if (await isInvoiceSynced(pago.id)) throw new Error('Este pago ya fue sincronizado antes');
 
-  await refreshCustomerIndex();
-  await refreshItemIndex();
-
+  // OJO: antes esto refrescaba TODO el indice de Customers/Items de
+  // QuickBooks (cientos de registros) en cada clic sobre un pago individual
+  // -- lento, y QuickBooks a veces respondia 504 (stream timeout) con el
+  // volumen actual de clientes. Ahora buildDraft/resolveCustomerMatch busca
+  // en QuickBooks solo el cliente de ESTE pago si no esta en el indice local
+  // (matchCustomerConFallback), en vez de traer a todos los clientes.
   const lineas = await getLineasCandidatas(pago.id_paciente, pago.fecha_recepcion);
   const draft = await buildDraft(pago.id_paciente, pago, lineas);
 
