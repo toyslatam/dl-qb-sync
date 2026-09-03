@@ -2,7 +2,15 @@ import { getPagos, getPagosByPaciente, getPagoPorId, getTratamientosByPaciente, 
 import { createInvoice } from '../integrations/quickbooks.js';
 import { refreshCustomerIndex, matchCustomer } from '../matching/customerMatch.js';
 import { refreshItemIndex, matchItem, normalizeKey } from '../matching/itemMatch.js';
-import { isInvoiceSynced, markInvoiceSynced, upsertDraft, getPendingDrafts, resolveReviewItem, findRelacion } from '../db/store.js';
+import {
+  isInvoiceSynced,
+  markInvoiceSynced,
+  upsertDraft,
+  getPendingDrafts,
+  resolveReviewItem,
+  findRelacion,
+  findDescuentoPorCliente,
+} from '../db/store.js';
 
 // Mapeos identicos al flujo de Power Automate ya usado por esta empresa en QuickBooks.
 const PAYMENT_METHOD_IDS = {
@@ -150,6 +158,10 @@ async function resolveCustomerMatch(idPaciente) {
 
 async function buildDraft(idPaciente, pago, lineas) {
   const customerMatch = await resolveCustomerMatch(idPaciente);
+  // Si el cliente tiene un descuento configurado (modulo Descuentos, ej.
+  // "Jubilados"), se pre-carga solo -- el usuario lo ve y lo puede editar o
+  // quitar antes de crear la factura, igual que el doctor sugerido.
+  const descuentoCliente = customerMatch?.qbCustomerId ? await findDescuentoPorCliente(customerMatch.qbCustomerId) : null;
   // N. de factura = numero de pago de Dentalink (pedido explicito del cliente).
   // El resto (tracking number, referencia del deposito) sigue usando la
   // boleta/folio, como siempre.
@@ -183,6 +195,8 @@ async function buildDraft(idPaciente, pago, lineas) {
       // lineas de Dentalink; el usuario confirma o cambia antes de crear.
       customerMemo: sugerirDoctor(lineas, pago) ?? '',
       taxCodeRef: TAX_CODE_ID,
+      descuentoPct: descuentoCliente ? Number(descuentoCliente.porcentaje) : 0,
+      descuentoCategoria: descuentoCliente?.categoria ?? null,
     },
     // Datos del deposito/pago que se registra al mismo tiempo que la factura.
     deposito: {
@@ -196,7 +210,9 @@ async function buildDraft(idPaciente, pago, lineas) {
 }
 
 export function calcularTotal(draft) {
-  return draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+  const subtotal = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+  const descuentoPct = Number(draft.factura?.descuentoPct ?? 0);
+  return subtotal - subtotal * descuentoPct;
 }
 
 export function isDraftReady(draft) {
@@ -221,6 +237,21 @@ export function invoicePayloadFromDraft(draft) {
       },
     })),
   };
+  // Descuento del cliente (ej. "Jubilados"): QuickBooks lo maneja como una
+  // linea mas de la factura (DetailType DiscountLineDetail), no como un
+  // campo aparte. PercentBased=true lo aplica sobre el subtotal de las
+  // lineas de servicio que la preceden en el arreglo Line.
+  const descuentoPct = Number(f.descuentoPct ?? 0);
+  if (descuentoPct > 0) {
+    payload.Line.push({
+      DetailType: 'DiscountLineDetail',
+      DiscountLineDetail: {
+        PercentBased: true,
+        DiscountPercent: Math.round(descuentoPct * 10000) / 100, // 0.10 -> 10
+        DiscountAccountRef: { value: process.env.QBO_CUENTA_DESCUENTO_ID || '90' },
+      },
+    });
+  }
   if (f.dueDate) payload.DueDate = f.dueDate;
   if (f.customerMemo) payload.CustomerMemo = { value: f.customerMemo };
   if (f.termRef) payload.SalesTermRef = { value: String(f.termRef) };

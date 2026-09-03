@@ -247,7 +247,13 @@ export default function FacturacionInbox() {
     draft.lineas.every((l) => l.estado === 'matched') &&
     Boolean(draft.factura?.docNumber);
 
-  const totalFactura = draft ? draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0) : 0;
+  const totalFactura = draft
+    ? (() => {
+        const subtotal = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+        const descuentoPct = Number(draft.factura?.descuentoPct ?? 0);
+        return subtotal - subtotal * descuentoPct;
+      })()
+    : 0;
 
   return (
     <div className="flex h-full gap-6">

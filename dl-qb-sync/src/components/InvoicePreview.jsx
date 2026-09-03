@@ -1,7 +1,10 @@
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card.jsx';
 
 export default function InvoicePreview({ draft }) {
-  const total = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+  const subtotal = draft.lineas.reduce((sum, l) => sum + (l.precio ?? 0) * (l.cantidad ?? 1), 0);
+  const descuentoPct = Number(draft.factura?.descuentoPct ?? 0);
+  const descuentoMonto = subtotal * descuentoPct;
+  const total = subtotal - descuentoMonto;
 
   return (
     <Card>
@@ -45,6 +48,21 @@ export default function InvoicePreview({ draft }) {
             ))}
           </div>
 
+          {descuentoPct > 0 && (
+            <div className="mt-3 space-y-1 border-t border-slate-200 pt-3 text-sm">
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Subtotal</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-warning">
+                <span>
+                  Descuento{draft.factura?.descuentoCategoria ? ` (${draft.factura.descuentoCategoria})` : ''} ·{' '}
+                  {Math.round(descuentoPct * 10000) / 100}%
+                </span>
+                <span>-${descuentoMonto.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
           <div className="mt-4 flex items-center justify-between border-t-2 border-slate-200 pt-4">
             <span className="text-sm font-semibold text-slate-500">Total</span>
             <span className="text-3xl font-extrabold tracking-tight text-slate-900">${total.toFixed(2)}</span>

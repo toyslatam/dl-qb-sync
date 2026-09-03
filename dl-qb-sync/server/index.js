@@ -44,6 +44,7 @@ import {
   getDescuentos,
   upsertDescuento,
   deleteDescuento,
+  findDescuentoPorCliente,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
@@ -410,6 +411,14 @@ app.post('/api/review-queue/:idPago/asignar-cliente', async (req, res) => {
 
     const draft = row.draft;
     draft.customerMatch = { qbCustomerId, qbDisplayName: qbDisplayName ?? null };
+    // Si este cliente (recien asignado a mano) tiene un descuento configurado
+    // y todavia no se habia precargado ninguno, se aplica ahora.
+    if (!draft.factura?.descuentoPct) {
+      const descuento = await findDescuentoPorCliente(qbCustomerId);
+      if (descuento) {
+        draft.factura = { ...draft.factura, descuentoPct: Number(descuento.porcentaje), descuentoCategoria: descuento.categoria };
+      }
+    }
     await upsertCustomerIndex(draft.idPaciente, qbCustomerId, qbDisplayName ?? '');
     await upsertDraft(req.params.idPago, row.id_paciente, draft);
     res.json(draft);

@@ -329,6 +329,17 @@ export async function deleteDescuento(id) {
   assertOk(error, 'deleteDescuento');
 }
 
+/** Usado al armar el borrador de una factura: ¿este cliente tiene un descuento configurado? */
+export async function findDescuentoPorCliente(qbCustomerId) {
+  const { data, error } = await supabase
+    .from('descuentos_clientes')
+    .select('*')
+    .eq('qb_customer_id', qbCustomerId)
+    .limit(1);
+  assertOk(error, 'findDescuentoPorCliente');
+  return data?.[0] ?? null;
+}
+
 // --- Asignaciones manuales del modulo de Comisiones (persistentes: antes se
 // perdian al recargar la pagina porque solo vivian en el estado del navegador) ---
 

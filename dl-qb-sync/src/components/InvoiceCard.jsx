@@ -65,6 +65,18 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
             className={inputClass}
           />
         </Field>
+        <Field label="Descuento (%)">
+          <input
+            type="number"
+            value={factura?.descuentoPct ? Math.round(factura.descuentoPct * 10000) / 100 : ''}
+            onChange={(e) => onChange('descuentoPct', e.target.value === '' ? 0 : Number(e.target.value) / 100)}
+            placeholder="0"
+            className={inputClass}
+          />
+          {factura?.descuentoCategoria && Number(factura?.descuentoPct) > 0 && (
+            <p className="mt-1 text-[0.75rem] text-slate-400">Precargado por descuento de {factura.descuentoCategoria}.</p>
+          )}
+        </Field>
         <div className="sm:col-span-2 lg:col-span-4">
           <Field label="Doctor (Nota para el cliente)">
             <input
