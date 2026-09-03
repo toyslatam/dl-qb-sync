@@ -41,6 +41,9 @@ import {
   findDoctorPorEmail,
   invitarUsuario,
   upsertAsignacionComision,
+  getDescuentos,
+  upsertDescuento,
+  deleteDescuento,
 } from './db/store.js';
 import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
@@ -730,6 +733,44 @@ app.post('/api/excepciones', async (req, res) => {
 app.delete('/api/excepciones/:id', async (req, res) => {
   try {
     await deleteExcepcion(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Descuentos por cliente de QuickBooks (ej. categoria "Jubilados") ---
+app.get('/api/descuentos', async (req, res) => {
+  try {
+    res.json(await getDescuentos(req.query.categoria));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/descuentos', async (req, res) => {
+  try {
+    const { categoria, qbCustomerId, qbDisplayName, porcentaje } = req.body ?? {};
+    if (!qbCustomerId || !qbDisplayName) return res.status(400).json({ error: 'qbCustomerId y qbDisplayName son requeridos' });
+    res.json(
+      await upsertDescuento({
+        categoria: categoria || 'Jubilados',
+        qbCustomerId,
+        qbDisplayName,
+        porcentaje: porcentaje !== undefined && porcentaje !== '' ? Number(porcentaje) : 0,
+      })
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/descuentos/:id', async (req, res) => {
+  try {
+    await deleteDescuento(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

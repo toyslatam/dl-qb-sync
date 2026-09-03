@@ -11,6 +11,7 @@ import ResidualesModule from './components/ResidualesModule.jsx';
 import RelacionadosModule from './components/RelacionadosModule.jsx';
 import ExcepcionesModule from './components/ExcepcionesModule.jsx';
 import AdjuntosModule from './components/AdjuntosModule.jsx';
+import DescuentosModule from './components/DescuentosModule.jsx';
 import ComisionesModule from './components/ComisionesModule.jsx';
 import MiComisionModule from './components/MiComisionModule.jsx';
 import ResumenFacturasModule from './components/ResumenFacturasModule.jsx';
@@ -94,6 +95,7 @@ export default function App() {
                 {modulo === 'relacionados' && <RelacionadosModule />}
                 {modulo === 'excepciones' && <ExcepcionesModule />}
                 {modulo === 'adjuntos' && <AdjuntosModule />}
+                {modulo === 'descuentos' && <DescuentosModule />}
               </>
             )}
           </div>

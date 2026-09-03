@@ -12,6 +12,7 @@ import {
   Link2,
   ShieldOff,
   Paperclip,
+  Percent,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -27,6 +28,7 @@ const CONFIG_SUBNAV = [
   { key: 'residuales', label: 'Residuales', icon: HeartPulse },
   { key: 'excepciones', label: 'Excepciones', icon: ShieldOff },
   { key: 'relacionados', label: 'Relacionados', icon: Link2 },
+  { key: 'descuentos', label: 'Descuentos', icon: Percent },
 ];
 
 function NavButton({ item, active, onClick, indent }) {

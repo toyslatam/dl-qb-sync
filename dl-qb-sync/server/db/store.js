@@ -301,6 +301,34 @@ export async function deleteExcepcion(id) {
   assertOk(error, 'deleteExcepcion');
 }
 
+// --- Descuentos por cliente de QuickBooks (ej. categoria "Jubilados") ---
+
+export async function getDescuentos(categoria) {
+  let query = supabase.from('descuentos_clientes').select('*').order('qb_display_name', { ascending: true });
+  if (categoria) query = query.eq('categoria', categoria);
+  const { data, error } = await query;
+  assertOk(error, 'getDescuentos');
+  return data ?? [];
+}
+
+export async function upsertDescuento({ categoria, qbCustomerId, qbDisplayName, porcentaje }) {
+  const { data, error } = await supabase
+    .from('descuentos_clientes')
+    .upsert(
+      { categoria, qb_customer_id: qbCustomerId, qb_display_name: qbDisplayName, porcentaje, updated_at: new Date().toISOString() },
+      { onConflict: 'categoria,qb_customer_id' }
+    )
+    .select()
+    .single();
+  assertOk(error, 'upsertDescuento');
+  return data;
+}
+
+export async function deleteDescuento(id) {
+  const { error } = await supabase.from('descuentos_clientes').delete().eq('id', id);
+  assertOk(error, 'deleteDescuento');
+}
+
 // --- Asignaciones manuales del modulo de Comisiones (persistentes: antes se
 // perdian al recargar la pagina porque solo vivian en el estado del navegador) ---
 

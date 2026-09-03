@@ -148,6 +148,21 @@ create table if not exists clientes_relacionados (
   created_at timestamptz not null default now()
 );
 
+-- Descuentos por categoria aplicados a un cliente puntual de QuickBooks (ej.
+-- categoria "Jubilados": % que se resta de lo que se le carga en los pagos).
+-- Por ahora solo existe esa categoria; el campo queda listo para agregar
+-- otras despues sin rediseñar la tabla.
+create table if not exists descuentos_clientes (
+  id bigint generated always as identity primary key,
+  categoria text not null default 'Jubilados',
+  qb_customer_id text not null,
+  qb_display_name text not null,
+  porcentaje numeric not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (categoria, qb_customer_id)
+);
+
 -- El backend usa la Service Role key (bypassa RLS), asi que RLS puede quedar
 -- habilitado sin policies adicionales para bloquear acceso directo desde el
 -- frontend/anon key a estas tablas.
@@ -162,3 +177,4 @@ alter table residuales_ortodoncia enable row level security;
 alter table clientes_relacionados enable row level security;
 alter table excepciones_comision enable row level security;
 alter table asignaciones_comision enable row level security;
+alter table descuentos_clientes enable row level security;
