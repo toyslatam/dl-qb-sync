@@ -74,9 +74,11 @@ app.use(express.json());
 const PUBLIC_API_PATHS = ['/api/health', '/api/qbo/connect', '/api/qbo/callback'];
 
 // Correos con acceso completo a Comisiones (todas las filas, todos los
-// doctores). Debe coincidir con ADMIN_EMAILS en src/App.jsx -- ese es el
-// que controla la UI, este es el que de verdad restringe los datos.
-const ADMIN_EMAILS = ['contabilidad02@ctauditores.com'];
+// doctores). OJO: no es lo mismo que ADMIN_EMAILS en src/App.jsx -- ese
+// controla quien puede crear/editar facturas. Un correo puede estar aqui
+// (admin de Comisiones) sin estar alla, y entonces en Facturas solo ve el
+// resumen/historico de solo lectura (ej. elenitacastillo).
+const ADMIN_EMAILS = ['contabilidad02@ctauditores.com', 'elenitacastillo@hotmail.com'];
 
 /** A que doctor (si a alguno) le corresponde ver Comisiones este usuario. */
 async function resolverRolComisiones(email) {
