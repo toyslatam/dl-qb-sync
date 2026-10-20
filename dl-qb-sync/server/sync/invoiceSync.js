@@ -167,9 +167,9 @@ async function buildDraft(idPaciente, pago, lineas) {
   // boleta/folio, como siempre.
   const docNumber = pago.id;
   const boleta = pago.folio ?? pago.id;
-  // La factura se registra el dia que se crea en QuickBooks (hora de Panama),
-  // no el dia historico del pago en Dentalink (que puede ser mucho mas antiguo).
-  const hoy = hoyPanama();
+  // Fecha de factura y de vencimiento = fecha del pago en Dentalink (pedido
+  // explicito del cliente). Si el pago no trae fecha, se usa hoy (Panama).
+  const fechaFactura = pago.fecha_recepcion ? String(pago.fecha_recepcion).slice(0, 10) : hoyPanama();
 
   return {
     idPaciente: String(idPaciente),
@@ -187,8 +187,8 @@ async function buildDraft(idPaciente, pago, lineas) {
     factura: {
       docNumber,
       trackingNum: boleta,
-      txnDate: hoy,
-      dueDate: hoy,
+      txnDate: fechaFactura,
+      dueDate: fechaFactura,
       termRef: process.env.QBO_SALES_TERM_ID || DEFAULT_TERM_ID,
       // Nota para cliente = nombre del doctor (asi lo lee el modulo de
       // Comisiones). Se sugiere el dentista que mas se repite entre las
