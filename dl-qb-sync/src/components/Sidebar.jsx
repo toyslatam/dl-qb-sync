@@ -13,6 +13,7 @@ import {
   ShieldOff,
   Paperclip,
   Percent,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -21,6 +22,7 @@ const NAV = [
   { key: 'comisiones', label: 'Comisiones', icon: Calculator },
   { key: 'doctores', label: 'Doctores', icon: Stethoscope },
   { key: 'adjuntos', label: 'Adjuntos', icon: Paperclip },
+  { key: 'informe43', label: 'Informe 43', icon: FileSpreadsheet },
 ];
 
 const CONFIG_SUBNAV = [

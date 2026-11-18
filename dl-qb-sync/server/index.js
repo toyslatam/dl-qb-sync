@@ -50,6 +50,12 @@ import { normalizeKey } from './matching/itemMatch.js';
 import { calcularComisiones, construirExcelComisiones, filtrarComisionesParaDoctor } from './sync/comisiones.js';
 import { listarAdjuntos } from './sync/adjuntos.js';
 import {
+  calcularInforme43,
+  construirExcelInforme43,
+  listarCuentasInforme43,
+  guardarConceptoCuenta,
+} from './sync/informe43.js';
+import {
   getAuthorizeUri,
   handleOAuthCallback,
   searchCustomers,
@@ -926,6 +932,65 @@ app.post('/api/comisiones/descargar', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Informe 43 (DGI): compras del mes desde QuickBooks (solo lectura) ---
+// Solo para quien tiene acceso completo a Comisiones (contabilidad).
+async function soloAdmin(req, res) {
+  const rolInfo = await resolverRolComisiones(req.user?.email);
+  if (rolInfo.rol !== 'admin') {
+    res.status(403).json({ error: 'No tienes acceso al Informe 43' });
+    return false;
+  }
+  return true;
+}
+
+app.post('/api/informe43', async (req, res) => {
+  try {
+    if (!(await soloAdmin(req, res))) return;
+    const { anio, mes } = req.body ?? {};
+    res.json(await calcularInforme43({ anio, mes }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/informe43/descargar', async (req, res) => {
+  try {
+    if (!(await soloAdmin(req, res))) return;
+    const { anio, mes } = req.body ?? {};
+    const resultado = await calcularInforme43({ anio, mes });
+    const buffer = construirExcelInforme43(resultado);
+    const periodo = `${resultado.periodo.anio}-${String(resultado.periodo.mes).padStart(2, '0')}`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="informe43-${periodo}.xlsx"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/informe43/cuentas', async (req, res) => {
+  try {
+    if (!(await soloAdmin(req, res))) return;
+    res.json(await listarCuentasInforme43());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/informe43/cuentas/:id', async (req, res) => {
+  try {
+    if (!(await soloAdmin(req, res))) return;
+    await guardarConceptoCuenta(req.params.id, req.body?.concepto ?? null);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
   }
 });
 

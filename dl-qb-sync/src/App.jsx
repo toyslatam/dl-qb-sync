@@ -15,6 +15,7 @@ import DescuentosModule from './components/DescuentosModule.jsx';
 import ComisionesModule from './components/ComisionesModule.jsx';
 import MiComisionModule from './components/MiComisionModule.jsx';
 import ResumenFacturasModule from './components/ResumenFacturasModule.jsx';
+import Informe43Module from './components/Informe43Module.jsx';
 import Sidebar from './components/Sidebar.jsx';
 
 // Correos con acceso completo a la pestana Facturas (crear/editar). Cualquier
@@ -95,6 +96,7 @@ export default function App() {
                 {modulo === 'relacionados' && <RelacionadosModule />}
                 {modulo === 'excepciones' && <ExcepcionesModule />}
                 {modulo === 'adjuntos' && <AdjuntosModule />}
+                {modulo === 'informe43' && <Informe43Module />}
                 {modulo === 'descuentos' && <DescuentosModule />}
               </>
             )}
