@@ -95,7 +95,9 @@ export default function Informe43Module() {
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a');
       a.href = url;
-      a.download = `informe43-${periodo}.xlsx`;
+      // El servidor arma el nombre oficial (Informe43_<RUC>_<AAAAMM>.xlsx).
+      const nombre = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+      a.download = nombre || `Informe43_${periodo.replace('-', '')}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -146,14 +148,7 @@ export default function Informe43Module() {
   }, [resultado, busqueda]);
 
   const totalPendientes = resultado ? resultado.proveedoresIncompletos.length + resultado.cuentasSinConcepto.length : 0;
-  const conceptos = resultado?.conceptos ?? {
-    1: 'Compras de bienes',
-    2: 'Servicios básicos',
-    3: 'Honorarios y servicios',
-    4: 'Alquileres',
-    5: 'Cargos bancarios',
-    7: 'Impuestos y tasas',
-  };
+  const conceptos = resultado?.conceptos ?? {};
 
   return (
     <div className="space-y-5">

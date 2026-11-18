@@ -52,6 +52,7 @@ import { listarAdjuntos } from './sync/adjuntos.js';
 import {
   calcularInforme43,
   construirExcelInforme43,
+  nombreArchivoInforme43,
   listarCuentasInforme43,
   guardarConceptoCuenta,
 } from './sync/informe43.js';
@@ -963,9 +964,9 @@ app.post('/api/informe43/descargar', async (req, res) => {
     const { anio, mes } = req.body ?? {};
     const resultado = await calcularInforme43({ anio, mes });
     const buffer = construirExcelInforme43(resultado);
-    const periodo = `${resultado.periodo.anio}-${String(resultado.periodo.mes).padStart(2, '0')}`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="informe43-${periodo}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivoInforme43(resultado.periodo)}"`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     res.send(buffer);
   } catch (err) {
     console.error(err);

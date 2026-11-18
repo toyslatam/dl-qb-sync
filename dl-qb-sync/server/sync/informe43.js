@@ -14,13 +14,15 @@ import { getSetting, setSetting } from '../db/store.js';
  * postal (BillAddr.PostalCode) y el tipo de persona (N/J/E) en el Fax.
  */
 
+// Catalogo oficial de la DGI (hoja de ayuda de la plantilla del Informe 43).
 export const CONCEPTOS = {
-  1: 'Compras de bienes',
+  1: 'Compras o adquisiciones de bienes muebles',
   2: 'Servicios básicos',
-  3: 'Honorarios y servicios',
-  4: 'Alquileres',
-  5: 'Cargos bancarios',
-  7: 'Impuestos y tasas',
+  3: 'Honorarios y comisiones por servicios personales',
+  4: 'Alquileres por arrendamientos comerciales',
+  5: 'Cargos bancarios, intereses y otros gastos financieros',
+  6: 'Compras o servicios del exterior',
+  7: 'Compras o servicios consolidados',
 };
 
 // Concepto por numero de cuenta de QuickBooks, traducido de la tabla de
@@ -62,7 +64,7 @@ const CONCEPTO_POR_NUMERO = {
   6102: 4, // Alquiler de Depositos
   // 5: cargos bancarios
   6500: 5,
-  // 7: impuestos
+  // 7: consolidados (la consulta original mandaba IMPUESTOS aqui)
   6201: 7, // Otros Impuestos
 };
 
@@ -366,10 +368,11 @@ export async function calcularInforme43({ anio, mes }) {
   };
 }
 
+// Encabezados tal cual la plantilla oficial de la DGI ("RUC " y "DV " con espacio).
 const ENCABEZADOS = [
   'TIPO DE PERSONA',
-  'RUC',
-  'DV',
+  'RUC ',
+  'DV ',
   'NOMBRE O RAZON SOCIAL',
   'FACTURA',
   'FECHA',
@@ -379,39 +382,66 @@ const ENCABEZADOS = [
   'ITBMS PAGADO EN BALBOAS',
 ];
 
-/** .xlsx con las mismas columnas y orden que la consulta original, mas una hoja de pendientes. */
+// RUC de Dental One: va en el nombre del archivo que se sube a la DGI.
+export const RUC_EMPRESA = (process.env.INFORME43_RUC_EMPRESA || '155657596-2-2017').trim();
+
+export function nombreArchivoInforme43({ anio, mes }) {
+  return `Informe43_${RUC_EMPRESA}_${anio}${String(mes).padStart(2, '0')}.xlsx`;
+}
+
+/**
+ * .xlsx en el formato oficial de la DGI ("INFORME 43 - FORMATO A
+ * DILIGENCIAR"): filas 1-3 de encabezado fijo, fila 4 con los titulos y los
+ * datos desde la fila 5. Texto en todas las columnas salvo concepto, compras
+ * y montos; la fecha como texto AAAAMMDD. Se agrega una hoja "Pendientes"
+ * aparte si hay algo que revisar (no afecta la hoja del informe).
+ */
 export function construirExcelInforme43(resultado) {
-  const filas = resultado.filas.map((f) => {
-    const [y, mo, d] = f.fecha.split('-').map(Number);
-    return [
-      f.tipoPersona,
-      f.ruc,
-      f.dv,
-      f.nombre,
-      f.factura,
-      // Numero de serie de Excel (dias desde 1899-12-30): un Date se corria un
-      // dia por la zona horaria del servidor (01/10 salia 30/09).
-      (Date.UTC(y, mo - 1, d) - Date.UTC(1899, 11, 30)) / 86_400_000,
-      f.concepto,
-      f.comprasBienesServicios,
-      f.monto,
-      f.itbms,
-    ];
-  });
-  const ws = XLSX.utils.aoa_to_sheet([ENCABEZADOS, ...filas]);
-  ws['!cols'] = [10, 18, 6, 40, 16, 12, 10, 14, 16, 16].map((wch) => ({ wch }));
-  // RUC, DV y factura como texto (no numero), para no perder ceros ni guiones.
-  for (let r = 1; r <= filas.length; r++) {
-    for (const c of [1, 2, 4]) {
+  const filas = resultado.filas.map((f) => [
+    f.tipoPersona,
+    f.ruc,
+    f.dv,
+    f.nombre,
+    f.factura,
+    f.fecha.replaceAll('-', ''),
+    f.concepto,
+    f.comprasBienesServicios,
+    f.monto,
+    f.itbms,
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['INFORME 43 - FORMATO A DILIGENCIAR'],
+    ['Esta sección de encabezado no se debe modificar. '],
+    ['Los datos de este informe deben ser registrados a partir de la línea 5 en adelante.'],
+    ENCABEZADOS,
+    ...filas,
+  ]);
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } },
+  ];
+  ws['!cols'] = [10, 20, 6, 42, 22, 12, 10, 14, 16, 16].map((wch) => ({ wch }));
+  for (let i = 0; i < filas.length; i++) {
+    const r = i + 4;
+    for (let c = 0; c <= 9; c++) {
       const celda = ws[XLSX.utils.encode_cell({ r, c })];
-      if (celda) celda.t = 's';
+      if (!celda) continue;
+      if (c <= 5) {
+        // RUC, DV y factura como texto para no perder ceros a la izquierda ni guiones.
+        celda.t = 's';
+        celda.v = String(celda.v ?? '');
+        celda.z = '@';
+      } else if (c <= 7) {
+        celda.z = '@';
+      } else {
+        celda.z = '0.00';
+      }
     }
-    const fecha = ws[XLSX.utils.encode_cell({ r, c: 5 })];
-    if (fecha) fecha.z = 'dd/mm/yyyy';
   }
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Informe 43');
+  XLSX.utils.book_append_sheet(wb, ws, 'Informe43');
 
   if (resultado.proveedoresIncompletos.length || resultado.cuentasSinConcepto.length) {
     const pendientes = [
