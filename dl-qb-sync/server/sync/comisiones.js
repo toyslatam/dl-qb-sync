@@ -18,6 +18,13 @@ function normalizar(texto) {
     .toLowerCase();
 }
 
+/** "Dra. María  Cristina Ramos" -> "maria cristina ramos": sin titulo, acentos ni espacios dobles. */
+function claveNombreDoctor(texto) {
+  return normalizar(texto)
+    .replace(/^dr(a|\(a\))?\.?\s+/, '')
+    .replace(/\s+/g, ' ');
+}
+
 /**
  * Calcula la tabla de comisiones (equivalente a ArchivoCalculo) para un rango
  * de fechas, leyendo SOLO de QuickBooks (facturas ya creadas) + los catalogos
@@ -93,7 +100,10 @@ export async function calcularComisiones({ fechaDesde, fechaHasta }) {
   const lab = armarIndicesDeCosto(costosLaboratorio, asignacionesLaboratorio);
   const insumos = armarIndicesDeCosto(costosInsumos, asignacionesInsumos);
 
-  const doctoresPorClave = new Map(doctores.map((d) => [`${normalizar(d.nombre)}|${normalizar(d.apellido)}`, d]));
+  // Se compara el nombre completo (nombre + apellido), no partido en el primer
+  // espacio: un doctor guardado como "Maria Cristina" + "Ramos" no matcheaba
+  // con la nota "Maria Cristina Ramos" (se leia "Maria" + "Cristina Ramos").
+  const doctoresPorClave = new Map(doctores.map((d) => [claveNombreDoctor(`${d.nombre} ${d.apellido}`), d]));
   const doctoresPorId = new Map(doctores.map((d) => [String(d.id), d]));
   const descuentoPorMedio = new Map(metodosPago.map((m) => [m.medio_pago, m.porcentaje]));
 
@@ -112,11 +122,10 @@ export async function calcularComisiones({ fechaDesde, fechaHasta }) {
 
   for (const inv of invoices) {
     const memo = inv.CustomerMemo?.value ?? '';
-    const { nombre, apellido } = separarNombreApellido(memo);
     // Doctor del encabezado (Nota para cliente): es la sugerencia por
     // defecto para cada linea, y tambien el que absorbe el costo de
     // Laboratorio completo de la factura (no se reparte entre lineas).
-    const doctorEncabezado = doctoresPorClave.get(`${normalizar(nombre)}|${normalizar(apellido)}`) ?? null;
+    const doctorEncabezado = doctoresPorClave.get(claveNombreDoctor(memo)) ?? null;
 
     const pacienteNombre = inv.CustomerRef?.name ?? '';
     const { nombre: pacienteNombreSep, apellido: pacienteApellidoSep } = separarNombreApellido(pacienteNombre);
