@@ -47,7 +47,7 @@ export default function EntitySearchBox({ endpoint, labelKey, onPick, placeholde
           Buscar
         </Button>
       </div>
-      {error && <p className="mt-1.5 text-[0.78rem] font-medium text-danger">{error}</p>}
+      {error && <p className="mt-1.5 text-[0.875rem] font-medium text-danger">{error}</p>}
       {results.length > 0 && (
         <ul className="mt-2 max-h-52 space-y-0.5 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-popover">
           {results.map((r) => (

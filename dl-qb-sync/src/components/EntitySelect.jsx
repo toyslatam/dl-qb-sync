@@ -34,7 +34,7 @@ export default function EntitySelect({ endpoint, value, onChange, placeholder, c
         loading={loading}
         className={className}
       />
-      {error && <p className="mt-1 text-[0.75rem] font-medium text-danger">{error}</p>}
+      {error && <p className="mt-1 text-[0.875rem] font-medium text-danger">{error}</p>}
     </div>
   );
 }

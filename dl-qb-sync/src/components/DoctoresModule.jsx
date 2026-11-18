@@ -21,7 +21,7 @@ function DoctorForm({ valores, onChange }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <label className="block">
-        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Título</span>
+        <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Título</span>
         <select className={inputClass} value={valores.titulo} onChange={(e) => onChange({ ...valores, titulo: e.target.value })}>
           {TITULOS.map((t) => (
             <option key={t} value={t}>
@@ -31,7 +31,7 @@ function DoctorForm({ valores, onChange }) {
         </select>
       </label>
       <label className="block">
-        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Comisión</span>
+        <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">% Comisión</span>
         <input
           type="number"
           className={inputClass}
@@ -40,7 +40,7 @@ function DoctorForm({ valores, onChange }) {
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Nombre</span>
+        <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Nombre</span>
         <input
           className={inputClass}
           placeholder="Como aparece en la Nota del cliente"
@@ -49,7 +49,7 @@ function DoctorForm({ valores, onChange }) {
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Apellido</span>
+        <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Apellido</span>
         <input
           className={inputClass}
           placeholder="Como aparece en la Nota del cliente"
@@ -59,7 +59,7 @@ function DoctorForm({ valores, onChange }) {
       </label>
       <div className="sm:col-span-2">
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Especialidad</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Especialidad</span>
           <input
             className={inputClass}
             value={valores.especialidad ?? ''}
@@ -69,7 +69,7 @@ function DoctorForm({ valores, onChange }) {
       </div>
       <div className="sm:col-span-2">
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">
             Correo (login para "Mi Comisión")
           </span>
           <input
@@ -79,7 +79,7 @@ function DoctorForm({ valores, onChange }) {
             value={valores.userEmail ?? ''}
             onChange={(e) => onChange({ ...valores, userEmail: e.target.value })}
           />
-          <p className="mt-1 text-[0.75rem] text-slate-400">
+          <p className="mt-1 text-[0.875rem] text-slate-500">
             Si este doctor inicia sesión con este correo, solo verá su propia comisión (no la de los demás).
           </p>
         </label>
@@ -186,7 +186,7 @@ export default function DoctoresModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><Stethoscope size={18} /></span>
             Doctores
           </h1>
@@ -202,7 +202,7 @@ export default function DoctoresModule() {
       </div>
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -237,7 +237,7 @@ export default function DoctoresModule() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                   <th className="px-5 py-3 font-semibold">Doctor</th>
                   <th className="px-5 py-3 font-semibold">Especialidad</th>
                   <th className="px-5 py-3 font-semibold">Acceso ("Mi Comisión")</th>

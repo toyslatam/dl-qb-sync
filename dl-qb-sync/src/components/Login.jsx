@@ -31,11 +31,11 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Email</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Email</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Contraseña</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Contraseña</span>
             <input
               type="password"
               value={password}
@@ -58,7 +58,7 @@ export default function Login() {
         </form>
       </div>
 
-      <div className="mt-6 flex items-center gap-2 text-[0.72rem] text-slate-400">
+      <div className="mt-6 flex items-center gap-2 text-[0.8125rem] text-slate-500">
         <span>Hecho por</span>
         <img src="/ct-auditores-logo.jpg" alt="CT Auditores" className="h-5 w-auto object-contain opacity-80" />
       </div>

@@ -13,7 +13,7 @@ export default function QuickBooksCard({ customerMatch, busy, onAsignar, onCrear
       <Card>
         <CardHeader>
           <CardTitle>Cliente QuickBooks</CardTitle>
-          <span className="inline-flex items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-[0.72rem] font-semibold text-success">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-[0.8125rem] font-semibold text-success">
             <CheckCircle2 size={12} strokeWidth={2.5} />
             Cliente encontrado
           </span>
@@ -29,7 +29,7 @@ export default function QuickBooksCard({ customerMatch, busy, onAsignar, onCrear
     <Card>
       <CardHeader>
         <CardTitle>Cliente QuickBooks</CardTitle>
-        <span className="inline-flex items-center gap-1 rounded-full bg-danger-light px-2.5 py-1 text-[0.72rem] font-semibold text-danger">
+        <span className="inline-flex items-center gap-1 rounded-full bg-danger-light px-2.5 py-1 text-[0.8125rem] font-semibold text-danger">
           <XCircle size={12} strokeWidth={2.5} />
           Cliente no encontrado
         </span>
@@ -57,7 +57,7 @@ export default function QuickBooksCard({ customerMatch, busy, onAsignar, onCrear
               onPick={onAsignar}
               autoFocus
             />
-            <button onClick={() => setModo(null)} className="mt-2 text-[0.78rem] text-slate-400 hover:text-slate-600">
+            <button onClick={() => setModo(null)} className="mt-2 text-[0.875rem] text-slate-500 hover:text-slate-600">
               Cancelar
             </button>
           </div>
@@ -84,7 +84,7 @@ export default function QuickBooksCard({ customerMatch, busy, onAsignar, onCrear
             >
               Crear
             </Button>
-            <button onClick={() => setModo(null)} className="text-[0.78rem] text-slate-400 hover:text-slate-600">
+            <button onClick={() => setModo(null)} className="text-[0.875rem] text-slate-500 hover:text-slate-600">
               Cancelar
             </button>
           </div>

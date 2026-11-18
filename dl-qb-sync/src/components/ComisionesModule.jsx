@@ -49,9 +49,9 @@ function StatTile({ icon: Icon, label, value, tone = 'slate' }) {
   };
   return (
     <div className="flex-1 rounded-card border border-slate-200 bg-white p-4 shadow-card">
-      <div className="mb-1.5 flex items-center gap-1.5 text-slate-400">
+      <div className="mb-1.5 flex items-center gap-1.5 text-slate-500">
         <Icon size={14} />
-        <span className="text-[0.72rem] font-semibold uppercase tracking-wide">{label}</span>
+        <span className="text-[0.8125rem] font-semibold">{label}</span>
       </div>
       <p className={cn('text-2xl font-extrabold tracking-tight', tonos[tone])}>{value}</p>
     </div>
@@ -107,7 +107,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
   return (
     <div className="space-y-3">
       <div className="relative max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={busqueda}
           onChange={(e) => {
@@ -123,7 +123,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.7rem] uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                 {COLUMNAS_DETALLE.map((c) => (
                   <th
                     key={c.key}
@@ -149,7 +149,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
             <tbody>
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={COLUMNAS_DETALLE.length} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={COLUMNAS_DETALLE.length} className="px-4 py-10 text-center text-sm text-slate-500">
                     Sin resultados.
                   </td>
                 </tr>
@@ -175,7 +175,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
                   <td className="px-4 py-2 text-right">{f.insumos ? `$${f.insumos.toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2 text-right">${f.base.toFixed(2)}</td>
                   <td className="px-4 py-2 text-right">
-                    {f.excepcion ? <span className="text-[0.72rem] font-medium text-slate-400">excepción</span> : `${Math.round(f.comisionPct * 100)}%`}
+                    {f.excepcion ? <span className="text-[0.8125rem] font-medium text-slate-500">excepción</span> : `${Math.round(f.comisionPct * 100)}%`}
                   </td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">${f.comisionAPagar.toFixed(2)}</td>
                 </tr>
@@ -185,7 +185,7 @@ function DetalleTab({ filas, doctoresDisponibles, onCambiarDoctor }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-[0.8rem] text-slate-500">
+      <div className="flex items-center justify-between text-[0.875rem] text-slate-500">
         <span>{filtradas.length} línea(s)</span>
         {totalPaginas > 1 && (
           <div className="flex items-center gap-2">
@@ -308,18 +308,18 @@ export default function ComisionesModule() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+        <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
           <span className="mr-2 inline-flex"><Calculator size={18} /></span>
           Comisiones
         </h1>
 
         <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Desde</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Desde</span>
             <input type="date" className={inputClass} value={desde} onChange={(e) => setDesde(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Hasta</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Hasta</span>
             <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </label>
           <Button variant="primary" size="md" onClick={calcular} disabled={loading}>
@@ -346,7 +346,7 @@ export default function ComisionesModule() {
       {!resultado && !loading && (
         <div className="flex flex-col items-center justify-center gap-2 rounded-card border border-slate-200 bg-white py-20 text-center shadow-card">
           <Calculator size={32} className="text-slate-300" />
-          <p className="text-sm text-slate-400">Elige un rango de fechas y presiona Calcular.</p>
+          <p className="text-sm text-slate-500">Elige un rango de fechas y presiona Calcular.</p>
         </div>
       )}
 
@@ -372,7 +372,7 @@ export default function ComisionesModule() {
                 <AlertTriangle size={20} className="mt-0.5 shrink-0 text-warning" />
                 <div>
                   <p className="text-sm font-bold text-slate-800">Existen pendientes antes de finalizar</p>
-                  <p className="mt-0.5 text-[0.85rem] text-slate-600">
+                  <p className="mt-0.5 text-[0.9375rem] text-slate-600">
                     {[
                       resultado.sinIdentificar.length > 0 && `${resultado.sinIdentificar.length} prestación(es) sin doctor`,
                       resultado.laboratoriosPendientes.length > 0 && `${resultado.laboratoriosPendientes.length} laboratorio(s) sin asignar`,
@@ -392,7 +392,7 @@ export default function ComisionesModule() {
               <CheckCircle2 size={20} className="shrink-0 text-success" />
               <div>
                 <p className="text-sm font-bold text-slate-800">Todo listo</p>
-                <p className="mt-0.5 text-[0.85rem] text-slate-600">No existen pendientes. Puedes exportar el reporte.</p>
+                <p className="mt-0.5 text-[0.9375rem] text-slate-600">No existen pendientes. Puedes exportar el reporte.</p>
               </div>
             </div>
           )}
@@ -552,7 +552,7 @@ export default function ComisionesModule() {
                 <span className="text-sm font-bold text-primary">Total: ${resultado.totalGeneral.toFixed(2)}</span>
               </CardHeader>
               <CardContent className="space-y-1.5">
-                {resultado.resumen.length === 0 && <p className="text-sm text-slate-400">Sin comisiones en este rango.</p>}
+                {resultado.resumen.length === 0 && <p className="text-sm text-slate-500">Sin comisiones en este rango.</p>}
                 {resultado.resumen.map((r) => (
                   <div key={r.doctor} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
                     <span className="text-sm font-medium text-slate-800">{r.doctor}</span>

@@ -80,7 +80,7 @@ export default function ExcepcionesModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><ShieldOff size={18} /></span>
             Excepciones
           </h1>
@@ -95,7 +95,7 @@ export default function ExcepcionesModule() {
       </div>
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -123,7 +123,7 @@ export default function ExcepcionesModule() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                 <th className="px-5 py-3 font-semibold">Doctor</th>
                 <th className="px-5 py-3 font-semibold">Prestación (contiene)</th>
                 <th className="px-5 py-3 text-right font-semibold">Acciones</th>
@@ -156,7 +156,7 @@ export default function ExcepcionesModule() {
       <Modal open={modalAbierto} onClose={() => setModalAbierto(false)} title="Nueva excepción" maxWidth="max-w-md">
         <div className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Doctor</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Doctor</span>
             <SearchableSelect
               options={doctores.map((d) => ({ value: d.id, label: `${d.titulo} ${d.nombre} ${d.apellido}` }))}
               value={doctorId}
@@ -165,7 +165,7 @@ export default function ExcepcionesModule() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">
               Texto de la prestación
             </span>
             <input
@@ -174,7 +174,7 @@ export default function ExcepcionesModule() {
               value={patron}
               onChange={(e) => setPatron(e.target.value)}
             />
-            <p className="mt-1 text-[0.75rem] text-slate-400">
+            <p className="mt-1 text-[0.875rem] text-slate-500">
               Cualquier prestación de este doctor que contenga este texto (sin importar mayúsculas, tildes, ni si dice
               "1-3", "2-3", etc.) cargará comisión en $0.
             </p>

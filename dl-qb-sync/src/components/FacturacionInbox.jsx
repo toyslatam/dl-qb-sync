@@ -257,7 +257,7 @@ export default function FacturacionInbox() {
 
   return (
     <div className="flex h-full gap-6">
-      <aside className="w-[30%] min-w-[300px]">
+      <aside className="w-[34%] min-w-[380px] max-w-[480px]">
         <PaymentsSidebar
           fecha={fecha}
           onFechaChange={setFecha}
@@ -279,7 +279,7 @@ export default function FacturacionInbox() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex h-full flex-col items-center justify-center text-center text-slate-400"
+              className="flex h-full flex-col items-center justify-center text-center text-slate-500"
             >
               <InboxIcon size={40} strokeWidth={1.5} />
               <p className="mt-3 text-sm">Selecciona un pago de la izquierda para revisarlo.</p>

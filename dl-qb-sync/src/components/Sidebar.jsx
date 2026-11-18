@@ -37,12 +37,12 @@ function NavButton({ item, active, onClick, indent }) {
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors',
-        indent && 'pl-9',
-        active ? 'bg-primary-light text-primary' : 'text-slate-600 hover:bg-slate-100'
+        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9375rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+        indent && 'pl-10',
+        active ? 'bg-slate-100 font-semibold text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
       )}
     >
-      <Icon size={16} className="shrink-0" />
+      <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-slate-500')} />
       <span className="truncate">{item.label}</span>
     </button>
   );
@@ -59,12 +59,16 @@ export default function Sidebar({ modulo, onModuloChange, health, email, onSync,
   const nav = soloMiComision ? NAV_DOCTOR : NAV;
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="px-4 py-5">
-        <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Dental Quick</h1>
+    <aside className="flex h-screen w-72 shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="px-5 pb-4 pt-5">
+        {/* El jpg del logo es cuadrado con mucho aire: se recorta a la franja del wordmark. */}
+        <div className="h-14 overflow-hidden">
+          <img src="/dental-one-logo.jpg" alt="Dental One" className="h-full w-full object-cover object-center" />
+        </div>
+        <h1 className="mt-1 text-[0.875rem] font-semibold text-slate-500">Dental Quick</h1>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-4">
         {nav.map((item) => (
           <NavButton key={item.key} item={item} active={modulo === item.key} onClick={() => onModuloChange(item.key)} />
         ))}
@@ -73,9 +77,9 @@ export default function Sidebar({ modulo, onModuloChange, health, email, onSync,
           <div>
             <button
               onClick={() => setConfigAbierta((v) => !v)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 hover:bg-slate-100"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9375rem] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             >
-              <Settings size={16} className="shrink-0" />
+              <Settings size={18} className="shrink-0 text-slate-500" />
               <span className="flex-1 truncate">Configuración</span>
               <ChevronDown size={14} className={cn('shrink-0 transition-transform', configAbierta && 'rotate-180')} />
             </button>
@@ -90,11 +94,11 @@ export default function Sidebar({ modulo, onModuloChange, health, email, onSync,
         )}
       </nav>
 
-      <div className="space-y-3 border-t border-slate-100 px-3 py-4">
+      <div className="space-y-3 border-t border-slate-200 px-4 py-4">
         {health && !soloMiComision && (
           <span
             className={cn(
-              'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold',
+              'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.8125rem] font-semibold',
               health.ok ? 'bg-success-light text-success' : 'bg-danger-light text-danger'
             )}
           >
@@ -105,20 +109,20 @@ export default function Sidebar({ modulo, onModuloChange, health, email, onSync,
         {!soloMiComision && (
           <button
             onClick={onSync}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9375rem] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           >
-            <RefreshCcw size={15} className="shrink-0" />
+            <RefreshCcw size={18} className="shrink-0 text-slate-500" />
             Sincronizar
           </button>
         )}
 
-        <div className="border-t border-slate-100 pt-3">
-          <p className="truncate px-3 text-[0.78rem] text-slate-400">{email}</p>
+        <div className="border-t border-slate-200 pt-3">
+          <p className="truncate px-3 text-[0.875rem] text-slate-500">{email}</p>
           <button
             onClick={onSignOut}
-            className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 hover:bg-danger-light hover:text-danger"
+            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9375rem] font-medium text-slate-600 hover:bg-danger-light hover:text-danger"
           >
-            <LogOut size={15} className="shrink-0" />
+            <LogOut size={18} className="shrink-0" />
             Salir
           </button>
         </div>

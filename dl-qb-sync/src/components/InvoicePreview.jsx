@@ -15,22 +15,22 @@ export default function InvoicePreview({ draft }) {
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-6">
           <div className="flex items-start justify-between border-b border-slate-200 pb-4">
             <div>
-              <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Cliente</p>
+              <p className="text-[0.8125rem] font-semibold text-slate-500">Cliente</p>
               <p className="text-sm font-semibold text-slate-800">
                 {draft.customerMatch?.qbDisplayName || draft.customerMatch?.qbCustomerId || '(sin asignar)'}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Factura N.°</p>
+              <p className="text-[0.8125rem] font-semibold text-slate-500">Factura N.°</p>
               <p className="text-sm font-semibold text-slate-800">
                 {draft.factura?.docNumber ?? draft.pago.folioBoleta ?? draft.pago.id}
               </p>
-              <p className="mt-1 text-[0.75rem] text-slate-500">{draft.factura?.txnDate ?? draft.pago.fecha}</p>
+              <p className="mt-1 text-[0.875rem] text-slate-500">{draft.factura?.txnDate ?? draft.pago.fecha}</p>
             </div>
           </div>
 
           <div className="mt-4 space-y-2">
-            <div className="grid grid-cols-12 gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="grid grid-cols-12 gap-2 text-[0.8125rem] font-semibold text-slate-500">
               <span className="col-span-6">Concepto</span>
               <span className="col-span-2 text-right">Cant.</span>
               <span className="col-span-2 text-right">Precio</span>

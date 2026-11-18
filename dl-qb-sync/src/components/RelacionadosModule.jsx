@@ -122,7 +122,7 @@ function NuevoRelacionModal({ open, onClose, onCreada }) {
       {paso === PASO_PACIENTE && (
         <div>
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">
               ID del paciente en Dentalink
             </span>
             <div className="flex gap-2">
@@ -147,7 +147,7 @@ function NuevoRelacionModal({ open, onClose, onCreada }) {
             <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-slate-800">{nombreCompletoPaciente(paciente)}</p>
-                <p className="text-[0.78rem] text-slate-500">
+                <p className="text-[0.875rem] text-slate-500">
                   RUC: {paciente.rut || '—'} · {paciente.email || 'sin correo'}
                 </p>
               </div>
@@ -164,7 +164,7 @@ function NuevoRelacionModal({ open, onClose, onCreada }) {
         <div>
           <div className="mb-4 flex items-center justify-between rounded-xl border border-primary/20 bg-primary-light px-4 py-2.5">
             <p className="text-sm font-semibold text-primary">{nombreCompletoPaciente(paciente)}</p>
-            <button onClick={() => setPaso(PASO_PACIENTE)} className="text-[0.78rem] font-medium text-primary underline">
+            <button onClick={() => setPaso(PASO_PACIENTE)} className="text-[0.875rem] font-medium text-primary underline">
               Cambiar
             </button>
           </div>
@@ -195,15 +195,15 @@ function NuevoRelacionModal({ open, onClose, onCreada }) {
           ) : (
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Nombre completo</span>
+                <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Nombre completo</span>
                 <input value={nombreCompleto} onChange={(e) => setNombreCompleto(e.target.value)} className={inputClass} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Correo</span>
+                <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Correo</span>
                 <input value={correo} onChange={(e) => setCorreo(e.target.value)} className={inputClass} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">RUC</span>
+                <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">RUC</span>
                 <input value={ruc} onChange={(e) => setRuc(e.target.value)} className={inputClass} />
               </label>
               <div className="flex justify-end pt-1">
@@ -248,7 +248,7 @@ export default function RelacionadosModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><Link2 size={18} /></span>
             Relacionados
           </h1>
@@ -284,7 +284,7 @@ export default function RelacionadosModule() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                   <th className="px-5 py-3 font-semibold">Paciente (Dentalink)</th>
                   <th className="px-5 py-3 font-semibold">Se factura bajo</th>
                   <th className="px-5 py-3 text-right font-semibold">Acciones</th>
@@ -295,7 +295,7 @@ export default function RelacionadosModule() {
                   <tr key={r.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                     <td className="px-5 py-3 font-medium text-slate-800">
                       {r.nombre_paciente || `Paciente #${r.id_paciente_dentalink}`}
-                      <span className="ml-1.5 text-[0.75rem] font-normal text-slate-400">#{r.id_paciente_dentalink}</span>
+                      <span className="ml-1.5 text-[0.875rem] font-normal text-slate-500">#{r.id_paciente_dentalink}</span>
                     </td>
                     <td className="px-5 py-3 text-slate-600">{r.qb_display_name}</td>
                     <td className="px-5 py-3">

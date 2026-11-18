@@ -59,7 +59,7 @@ const inputClass =
 
 function ConfianzaBadge({ valor }) {
   const tono = valor >= 85 ? 'bg-success-light text-success' : valor >= 60 ? 'bg-warning-light text-warning' : 'bg-slate-100 text-slate-500';
-  return <span className={cn('rounded-full px-2 py-0.5 text-[0.72rem] font-bold', tono)}>{valor}%</span>;
+  return <span className={cn('rounded-full px-2 py-0.5 text-[0.8125rem] font-bold', tono)}>{valor}%</span>;
 }
 
 function FilaResultado({ f, confianza, onSeleccionar }) {
@@ -144,13 +144,13 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
           <span className="text-slate-600">
             {costo.paciente || '(sin paciente)'} · {costo.fecha} · ${Number(costo.monto).toFixed(2)} · {costo.proveedor}
           </span>
-          {costo.doctorTexto && <p className="mt-1 text-[0.8rem] text-slate-500">{costo.doctorTexto}</p>}
+          {costo.doctorTexto && <p className="mt-1 text-[0.875rem] text-slate-500">{costo.doctorTexto}</p>}
         </div>
       )}
 
       {sugeridas.length > 0 && (
         <div className="mb-5">
-          <p className="mb-2 flex items-center gap-1.5 text-[0.78rem] font-semibold text-primary">
+          <p className="mb-2 flex items-center gap-1.5 text-[0.875rem] font-semibold text-primary">
             <Sparkles size={14} />
             Coincidencias sugeridas
           </p>
@@ -179,10 +179,10 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
         </div>
       )}
 
-      <p className="mb-2 text-[0.78rem] font-semibold uppercase tracking-wide text-slate-400">Búsqueda manual</p>
+      <p className="mb-2 text-[0.875rem] font-semibold text-slate-500">Búsqueda manual</p>
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             value={busqueda}
             onChange={(e) => {
@@ -225,7 +225,7 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
               setFechaFiltro('');
               setPagina(1);
             }}
-            className="flex h-9 items-center gap-1 rounded-xl px-2 text-[0.8rem] text-slate-400 hover:text-slate-600"
+            className="flex h-9 items-center gap-1 rounded-xl px-2 text-[0.875rem] text-slate-500 hover:text-slate-600"
           >
             <X size={13} />
             Limpiar
@@ -237,7 +237,7 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
         <div className="max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50">
-              <tr className="border-b border-slate-100 text-left text-[0.7rem] uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                 <th className="px-4 py-2.5 font-semibold"># Factura</th>
                 <th className="px-4 py-2.5 font-semibold">Paciente</th>
                 <th className="px-4 py-2.5 font-semibold">Doctor</th>
@@ -251,7 +251,7 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
             <tbody>
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                     Sin resultados.
                   </td>
                 </tr>
@@ -265,7 +265,7 @@ export default function FacturaLookupModal({ open, onClose, costo, filas, onSele
       </div>
 
       {totalPaginas > 1 && (
-        <div className="mt-3 flex items-center justify-between text-[0.8rem] text-slate-500">
+        <div className="mt-3 flex items-center justify-between text-[0.875rem] text-slate-500">
           <span>
             {filtradas.length} factura(s) · página {pagina} de {totalPaginas}
           </span>

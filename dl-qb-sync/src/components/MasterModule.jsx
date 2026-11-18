@@ -84,7 +84,7 @@ export default function MasterModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><Landmark size={18} /></span>
             Master
           </h1>
@@ -99,7 +99,7 @@ export default function MasterModule() {
       </div>
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -125,7 +125,7 @@ export default function MasterModule() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                 <th className="px-5 py-3 font-semibold">Método de pago</th>
                 <th className="px-5 py-3 text-right font-semibold">Descuento</th>
                 <th className="px-5 py-3 text-right font-semibold">Editar</th>
@@ -146,7 +146,7 @@ export default function MasterModule() {
                           onChange={(e) => setPorcentajeEdit(e.target.value)}
                           className={`${inputClass} w-24 text-right`}
                         />
-                        <span className="text-xs text-slate-400">%</span>
+                        <span className="text-xs text-slate-500">%</span>
                       </div>
                     ) : (
                       <span className="font-semibold text-primary">{(m.porcentaje * 100).toFixed(1)}%</span>
@@ -182,11 +182,11 @@ export default function MasterModule() {
       <Modal open={agregando} onClose={() => setAgregando(false)} title="Agregar medio de pago" maxWidth="max-w-md">
         <div className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Nombre</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Nombre</span>
             <input className={inputClass} value={nuevoMedio} onChange={(e) => setNuevoMedio(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Descuento</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">% Descuento</span>
             <input type="number" className={inputClass} value={nuevoPct} onChange={(e) => setNuevoPct(e.target.value)} />
           </label>
         </div>

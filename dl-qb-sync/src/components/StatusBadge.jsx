@@ -14,12 +14,12 @@ export default function StatusBadge({ estado, className }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[0.8125rem] font-semibold whitespace-nowrap',
         info.className,
         className
       )}
     >
-      <Icon size={12} strokeWidth={2.5} />
+      <Icon size={14} strokeWidth={2.25} />
       {info.label}
     </span>
   );

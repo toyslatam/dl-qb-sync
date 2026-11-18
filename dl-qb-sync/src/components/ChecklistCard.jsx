@@ -11,7 +11,7 @@ function Item({ ok, label, hint }) {
       )}
       <div>
         <p className={`text-sm font-medium ${ok ? 'text-slate-700' : 'text-slate-800'}`}>{label}</p>
-        {!ok && hint && <p className="text-[0.78rem] text-slate-400">{hint}</p>}
+        {!ok && hint && <p className="text-[0.875rem] text-slate-500">{hint}</p>}
       </div>
     </div>
   );

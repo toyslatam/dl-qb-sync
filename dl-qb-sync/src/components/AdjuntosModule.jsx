@@ -105,18 +105,18 @@ export default function AdjuntosModule() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+        <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
           <span className="mr-2 inline-flex"><Paperclip size={18} /></span>
           Adjuntos
         </h1>
 
         <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Desde</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Desde</span>
             <input type="date" className={inputClass} value={desde} onChange={(e) => setDesde(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Hasta</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Hasta</span>
             <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </label>
           <Button variant="primary" size="md" onClick={buscar} disabled={loading}>
@@ -137,7 +137,7 @@ export default function AdjuntosModule() {
       {filas === null && !loading && (
         <div className="flex flex-col items-center justify-center gap-2 rounded-card border border-slate-200 bg-white py-20 text-center shadow-card">
           <Paperclip size={32} className="text-slate-300" />
-          <p className="text-sm text-slate-400">Elige un rango de fechas y presiona Buscar.</p>
+          <p className="text-sm text-slate-500">Elige un rango de fechas y presiona Buscar.</p>
         </div>
       )}
 
@@ -146,7 +146,7 @@ export default function AdjuntosModule() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.7rem] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                   <th className="w-10 px-4 py-3">
                     <input type="checkbox" checked={todasSeleccionadas} onChange={alternarTodas} disabled={conAdjunto.length === 0} />
                   </th>
@@ -160,7 +160,7 @@ export default function AdjuntosModule() {
               <tbody>
                 {filas.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
                       Sin facturas en este rango.
                     </td>
                   </tr>
@@ -185,7 +185,7 @@ export default function AdjuntosModule() {
                         <button
                           onClick={() => descargarUna(f)}
                           disabled={descargandoId === f.idFactura}
-                          className="flex items-center gap-1.5 text-[0.82rem] font-medium text-primary hover:underline disabled:opacity-50"
+                          className="flex items-center gap-1.5 text-[0.9375rem] font-medium text-primary hover:underline disabled:opacity-50"
                         >
                           {descargandoId === f.idFactura ? (
                             <Loader2 size={13} className="animate-spin" />
@@ -195,7 +195,7 @@ export default function AdjuntosModule() {
                           Descargar
                         </button>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-[0.82rem] text-slate-400">
+                        <span className="flex items-center gap-1.5 text-[0.9375rem] text-slate-500">
                           <FileWarning size={13} />
                           Sin adjunto
                         </span>

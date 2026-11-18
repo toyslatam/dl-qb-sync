@@ -82,7 +82,7 @@ export default function App() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main className={enFacturas && esAdmin && !esDoctor ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
-          <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
+          <div className="mx-auto h-full max-w-[1600px] px-8 py-7">
             {esDoctor ? (
               <MiComisionModule doctor={miRol.doctor} />
             ) : (

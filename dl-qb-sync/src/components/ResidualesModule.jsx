@@ -57,7 +57,7 @@ function PacientePicker({ valor, onElegir }) {
           }}
           autoFocus
         />
-        <button onClick={() => setBuscando(false)} className="mt-1.5 text-[0.78rem] text-slate-400 hover:text-slate-600">
+        <button onClick={() => setBuscando(false)} className="mt-1.5 text-[0.875rem] text-slate-500 hover:text-slate-600">
           Cancelar
         </button>
       </div>
@@ -67,7 +67,7 @@ function PacientePicker({ valor, onElegir }) {
   return (
     <div className="flex items-center gap-2">
       <div className={`${inputClass} flex flex-1 items-center gap-2 text-slate-700`}>
-        <UserRound size={14} className="shrink-0 text-slate-400" />
+        <UserRound size={14} className="shrink-0 text-slate-500" />
         <span className="truncate">{valor || 'Sin paciente elegido'}</span>
       </div>
       <Button variant="secondary" size="md" onClick={() => setBuscando(true)}>
@@ -111,11 +111,11 @@ function ResidualForm({ valores, onChange, doctores }) {
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Paciente</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Paciente</span>
           <PacientePicker valor={valores.paciente} onElegir={(nombre) => setCampo('paciente', nombre)} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Doctor</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Doctor</span>
           <SearchableSelect
             options={doctores.map((d) => ({ value: d.id, label: `${d.titulo} ${d.nombre} ${d.apellido}` }))}
             value={valores.doctorId}
@@ -126,7 +126,7 @@ function ResidualForm({ valores, onChange, doctores }) {
       </div>
 
       <div>
-        <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Abonos (soporte/detalle)</p>
+        <p className="mb-2 text-[0.8125rem] font-semibold text-slate-500">Abonos (soporte/detalle)</p>
         <div className="space-y-2">
           {valores.abonos.map((abono, i) => (
             <div key={i} className="flex gap-2">
@@ -153,13 +153,13 @@ function ResidualForm({ valores, onChange, doctores }) {
             <Plus size={14} />
             Agregar abono
           </Button>
-          <span className="text-[0.8rem] text-slate-400">Suma abonos: ${sumaAbonos.toFixed(2)}</span>
+          <span className="text-[0.875rem] text-slate-500">Suma abonos: ${sumaAbonos.toFixed(2)}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Monto Residual</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Monto Residual</span>
           <input
             type="number"
             className={inputClass}
@@ -168,7 +168,7 @@ function ResidualForm({ valores, onChange, doctores }) {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Descuento (T/C)</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">% Descuento (T/C)</span>
           <input
             type="number"
             step="0.1"
@@ -178,7 +178,7 @@ function ResidualForm({ valores, onChange, doctores }) {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Comisión</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">% Comisión</span>
           <input
             type="number"
             className={inputClass}
@@ -190,15 +190,15 @@ function ResidualForm({ valores, onChange, doctores }) {
 
       <div className="grid grid-cols-3 gap-3 rounded-xl bg-slate-50 p-4 text-center">
         <div>
-          <p className="text-[0.72rem] text-slate-400">Desc. T/C</p>
+          <p className="text-[0.8125rem] text-slate-500">Desc. T/C</p>
           <p className="text-base font-semibold text-slate-700">${descTC.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-[0.72rem] text-slate-400">Final</p>
+          <p className="text-[0.8125rem] text-slate-500">Final</p>
           <p className="text-base font-semibold text-slate-700">${final.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-[0.72rem] text-slate-400">Para Pagar</p>
+          <p className="text-[0.8125rem] text-slate-500">Para Pagar</p>
           <p className="text-lg font-bold text-primary">${paraPagar.toFixed(2)}</p>
         </div>
       </div>
@@ -273,7 +273,7 @@ export default function ResidualesModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><HeartPulse size={18} /></span>
             Residuales de Ortodoncia
           </h1>
@@ -300,7 +300,7 @@ export default function ResidualesModule() {
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
             <HeartPulse size={32} className="text-slate-300" />
             <p className="text-sm font-medium text-slate-500">Sin casos residuales todavía.</p>
-            <p className="max-w-sm text-[0.85rem] text-slate-400">
+            <p className="max-w-sm text-[0.9375rem] text-slate-500">
               Cuando quede un residual de comisión pendiente (ej. abonos de Invisalign), agrégalo aquí.
             </p>
             <Button variant="secondary" size="sm" onClick={abrirNuevo} className="mt-1">
@@ -312,7 +312,7 @@ export default function ResidualesModule() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                   <th className="px-5 py-3 font-semibold">Paciente</th>
                   <th className="px-5 py-3 font-semibold">Doctor</th>
                   <th className="px-5 py-3 text-right font-semibold">Residual</th>

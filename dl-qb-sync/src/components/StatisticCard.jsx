@@ -12,12 +12,12 @@ export default function StatisticCard({ label, value, tone = 'slate', active, on
     <button
       onClick={onClick}
       className={cn(
-        'flex flex-1 flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-colors',
+        'flex min-w-0 flex-1 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors',
         active ? 'border-primary/40 bg-primary-light' : 'border-slate-200 bg-white hover:bg-slate-50'
       )}
     >
-      <span className={cn('text-xl font-bold leading-none', TONES[tone])}>{value}</span>
-      <span className="text-[0.7rem] font-medium text-slate-500">{label}</span>
+      <span className={cn('text-2xl font-bold leading-none tabular-nums', TONES[tone])}>{value}</span>
+      <span className="whitespace-nowrap text-[0.8125rem] font-medium text-slate-600">{label}</span>
     </button>
   );
 }

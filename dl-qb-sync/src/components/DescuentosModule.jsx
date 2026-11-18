@@ -81,7 +81,7 @@ export default function DescuentosModule() {
     <div className="flex h-full flex-col">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
             <span className="mr-2 inline-flex"><Percent size={18} /></span>
             Descuentos
           </h1>
@@ -96,7 +96,7 @@ export default function DescuentosModule() {
       </div>
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -124,7 +124,7 @@ export default function DescuentosModule() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                 <th className="px-5 py-3 font-semibold">Cliente (QuickBooks)</th>
                 <th className="px-5 py-3 text-right font-semibold">Descuento</th>
                 <th className="px-5 py-3 text-right font-semibold">Acciones</th>
@@ -155,11 +155,11 @@ export default function DescuentosModule() {
       <Modal open={modalAbierto} onClose={() => setModalAbierto(false)} title="Agregar cliente con descuento" maxWidth="max-w-md">
         <div className="space-y-4">
           <div>
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Cliente</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Cliente</span>
             {clienteElegido ? (
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2">
                 <span className="text-sm font-medium text-slate-800">{clienteElegido.DisplayName}</span>
-                <button onClick={() => setClienteElegido(null)} className="text-[0.78rem] font-medium text-primary underline">
+                <button onClick={() => setClienteElegido(null)} className="text-[0.875rem] font-medium text-primary underline">
                   Cambiar
                 </button>
               </div>
@@ -174,7 +174,7 @@ export default function DescuentosModule() {
             )}
           </div>
           <label className="block">
-            <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">% Descuento</span>
+            <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">% Descuento</span>
             <input
               type="number"
               className={inputClass}

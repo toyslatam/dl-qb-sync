@@ -6,7 +6,7 @@ import { apiFetch } from '../lib/api.js';
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">{label}</span>
       {children}
     </label>
   );
@@ -74,7 +74,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
             className={inputClass}
           />
           {factura?.descuentoCategoria && Number(factura?.descuentoPct) > 0 && (
-            <p className="mt-1 text-[0.75rem] text-slate-400">Precargado por descuento de {factura.descuentoCategoria}.</p>
+            <p className="mt-1 text-[0.875rem] text-slate-500">Precargado por descuento de {factura.descuentoCategoria}.</p>
           )}
         </Field>
         <div className="sm:col-span-2 lg:col-span-4">
@@ -93,7 +93,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
             </datalist>
           </Field>
           {memo && !doctorConocido && (
-            <p className="mt-1 text-[0.78rem] text-warning">
+            <p className="mt-1 text-[0.875rem] text-warning">
               Este nombre no está en el catálogo de Doctores — el reporte de Comisiones no lo va a poder identificar hasta
               que lo agregues ahí (o corrijas el nombre para que coincida exacto).
             </p>
@@ -101,7 +101,7 @@ export default function InvoiceCard({ factura, deposito, totalFactura, onChange,
         </div>
 
         <div className="sm:col-span-2 lg:col-span-4 mt-1 rounded-xl bg-slate-50 p-3.5">
-          <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">
+          <p className="mb-3 text-[0.8125rem] font-semibold text-slate-500">
             Depósito a registrar (si se usa "Crear factura + registrar pago")
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

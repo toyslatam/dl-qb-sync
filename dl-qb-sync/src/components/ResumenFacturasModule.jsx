@@ -50,7 +50,7 @@ export default function ResumenFacturasModule() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-5">
-        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+        <h1 className="flex items-center text-xl font-bold tracking-tight text-slate-900">
           <span className="mr-2 inline-flex"><ClipboardList size={18} /></span>
           Resumen de facturación
         </h1>
@@ -59,11 +59,11 @@ export default function ResumenFacturasModule() {
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Desde</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Desde</span>
           <input type="date" className={inputClass} value={desde} onChange={(e) => setDesde(e.target.value)} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-wide text-slate-400">Hasta</span>
+          <span className="mb-1.5 block text-[0.875rem] font-medium text-slate-600">Hasta</span>
           <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </label>
         <button
@@ -76,7 +76,7 @@ export default function ResumenFacturasModule() {
         </button>
 
         {conteo && (
-          <div className="ml-auto flex gap-2 text-[0.78rem]">
+          <div className="ml-auto flex gap-2 text-[0.875rem]">
             <span className="rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-600">{conteo.pendiente} pendientes</span>
             <span className="rounded-full bg-warning-light px-3 py-1.5 font-medium text-warning">{conteo.en_cola} en revisión</span>
             <span className="rounded-full bg-success-light px-3 py-1.5 font-medium text-success">{conteo.sincronizado} procesados</span>
@@ -90,7 +90,7 @@ export default function ResumenFacturasModule() {
         {pagos === null ? (
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
             <ClipboardList size={32} className="text-slate-300" />
-            <p className="text-sm text-slate-400">Elige un rango de fechas y presiona Buscar.</p>
+            <p className="text-sm text-slate-500">Elige un rango de fechas y presiona Buscar.</p>
           </div>
         ) : pagos.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
@@ -101,7 +101,7 @@ export default function ResumenFacturasModule() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[0.72rem] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-[0.8125rem] text-slate-500">
                   <th className="px-5 py-3 font-semibold"># Pago</th>
                   <th className="px-5 py-3 font-semibold">Paciente</th>
                   <th className="px-5 py-3 font-semibold">Fecha</th>

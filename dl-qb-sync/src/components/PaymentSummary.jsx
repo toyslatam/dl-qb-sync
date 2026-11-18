@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge.jsx';
 function Field({ label, value }) {
   return (
     <div>
-      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-[0.8125rem] font-semibold text-slate-500">{label}</p>
       <p className="mt-0.5 truncate text-sm font-medium text-slate-800">{value}</p>
     </div>
   );

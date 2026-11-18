@@ -13,17 +13,17 @@ function ItemPicker({ nombreSugerido, busy, onAsignar, onCrear, onCancel }) {
       <div className="mb-2 flex gap-1.5">
         <button
           onClick={() => setModo('buscar')}
-          className={`rounded-lg px-2.5 py-1 text-[0.75rem] font-medium ${modo === 'buscar' ? 'bg-primary text-white' : 'bg-white text-slate-600'}`}
+          className={`rounded-lg px-2.5 py-1 text-[0.875rem] font-medium ${modo === 'buscar' ? 'bg-primary text-white' : 'bg-white text-slate-600'}`}
         >
           Buscar existente
         </button>
         <button
           onClick={() => setModo('crear')}
-          className={`rounded-lg px-2.5 py-1 text-[0.75rem] font-medium ${modo === 'crear' ? 'bg-primary text-white' : 'bg-white text-slate-600'}`}
+          className={`rounded-lg px-2.5 py-1 text-[0.875rem] font-medium ${modo === 'crear' ? 'bg-primary text-white' : 'bg-white text-slate-600'}`}
         >
           Crear nuevo
         </button>
-        <button onClick={onCancel} className="ml-auto text-[0.75rem] text-slate-400 hover:text-slate-600">
+        <button onClick={onCancel} className="ml-auto text-[0.875rem] text-slate-500 hover:text-slate-600">
           Cancelar
         </button>
       </div>
@@ -68,7 +68,7 @@ function LineaCard({ linea, busy, editing, seleccionando, seleccionada, onToggle
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+        <label className="flex items-center gap-1.5 text-[0.875rem] text-slate-500">
           Precio
           <input
             type="number"
@@ -77,7 +77,7 @@ function LineaCard({ linea, busy, editing, seleccionando, seleccionada, onToggle
             className="h-8 w-24 rounded-lg border border-slate-200 px-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
-        <label className="flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+        <label className="flex items-center gap-1.5 text-[0.875rem] text-slate-500">
           Cant.
           <input
             type="number"
@@ -91,7 +91,7 @@ function LineaCard({ linea, busy, editing, seleccionando, seleccionada, onToggle
           {linea.qbItemId ? (
             <button
               onClick={() => onEditingChange(linea.idDetalle)}
-              className="inline-flex items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-[0.72rem] font-semibold text-success hover:opacity-80"
+              className="inline-flex items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-[0.8125rem] font-semibold text-success hover:opacity-80"
             >
               <CheckCircle2 size={12} strokeWidth={2.5} />
               {linea.qbItemName || linea.qbItemId}
@@ -171,7 +171,7 @@ export default function ServicesCard({ lineas, busy, onEditar, onEliminar, onEli
       <CardHeader>
         <CardTitle>Prestaciones</CardTitle>
         <div className="flex items-center gap-3">
-          <span className="text-[0.78rem] text-slate-400">{lineas.length} línea(s)</span>
+          <span className="text-[0.875rem] text-slate-500">{lineas.length} línea(s)</span>
           {lineas.length > 1 &&
             (seleccionando ? (
               <Button variant="ghost" size="sm" onClick={cancelarSeleccion}>
@@ -202,10 +202,10 @@ export default function ServicesCard({ lineas, busy, onEditar, onEliminar, onEli
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar prestación…"
-                className="h-8 w-full rounded-lg border border-primary/20 bg-white pl-7 pr-2 text-[0.82rem] focus:border-primary focus:outline-none"
+                className="h-8 w-full rounded-lg border border-primary/20 bg-white pl-7 pr-2 text-[0.9375rem] focus:border-primary focus:outline-none"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-[0.82rem] text-primary">
+            <div className="flex flex-wrap items-center gap-2 text-[0.9375rem] text-primary">
               <span className="font-medium">
                 {seleccionadas.size} de {lineas.length} seleccionadas
                 {busqueda && <> · {visibles.length} visible(s)</>}

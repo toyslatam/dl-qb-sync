@@ -53,7 +53,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           abierto && 'border-primary ring-2 ring-primary/15'
         )}
       >
-        <span className={cn('truncate', !seleccionado && 'text-slate-400')}>
+        <span className={cn('truncate', !seleccionado && 'text-slate-500')}>
           {loading ? 'Cargando…' : seleccionado ? seleccionado.label : placeholder}
         </span>
         <div className="flex shrink-0 items-center gap-1">
@@ -70,24 +70,24 @@ export default function SearchableSelect({ options, value, onChange, placeholder
               <X size={13} />
             </span>
           )}
-          <ChevronDown size={14} className="text-slate-400" />
+          <ChevronDown size={14} className="text-slate-500" />
         </div>
       </button>
 
       {abierto && (
         <div className="absolute z-20 mt-1 w-full min-w-[220px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-popover">
           <div className="relative mb-1.5">
-            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               ref={inputRef}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar…"
-              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[0.83rem] focus:border-primary focus:outline-none"
+              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[0.9375rem] focus:border-primary focus:outline-none"
             />
           </div>
           <div className="max-h-52 overflow-y-auto">
-            {filtradas.length === 0 && <p className="px-2 py-2 text-[0.8rem] text-slate-400">Sin resultados.</p>}
+            {filtradas.length === 0 && <p className="px-2 py-2 text-[0.875rem] text-slate-500">Sin resultados.</p>}
             {filtradas.map((o) => (
               <button
                 key={o.value}
@@ -98,7 +98,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                   setBusqueda('');
                 }}
                 className={cn(
-                  'block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-[0.85rem]',
+                  'block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-[0.9375rem]',
                   String(o.value) === String(value) ? 'bg-primary-light text-primary' : 'text-slate-700 hover:bg-slate-100'
                 )}
               >

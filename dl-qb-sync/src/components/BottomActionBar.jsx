@@ -51,7 +51,7 @@ export default function BottomActionBar({
     <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
       <div className="mx-auto flex max-w-[1400px] items-center justify-end gap-2">
         {savedHint && (
-          <span className="mr-auto flex items-center gap-1 text-[0.8rem] font-medium text-success">
+          <span className="mr-auto flex items-center gap-1 text-[0.875rem] font-medium text-success">
             <Check size={14} /> {savedHint}
           </span>
         )}

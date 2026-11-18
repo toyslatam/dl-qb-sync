@@ -82,7 +82,7 @@ export default function PaymentsSidebar({
       </div>
 
       <div className="relative">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -91,13 +91,13 @@ export default function PaymentsSidebar({
         />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {FILTROS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFiltro(f.key)}
             className={cn(
-              'rounded-full px-3 py-1 text-[0.75rem] font-medium transition-colors',
+              'rounded-full px-2.5 py-1 text-[0.875rem] font-medium transition-colors',
               filtro === f.key ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             )}
           >
@@ -116,7 +116,7 @@ export default function PaymentsSidebar({
         )}
 
         {!loading && filtrados.length === 0 && (
-          <p className="px-2 py-8 text-center text-sm text-slate-400">Sin pagos para mostrar.</p>
+          <p className="px-2 py-8 text-center text-sm text-slate-500">Sin pagos para mostrar.</p>
         )}
 
         <AnimatePresence initial={false}>
